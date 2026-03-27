@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Users collection ──────────────────────────────────────────────────────
+    match /users/{userId} {
+      // Any authenticated user can read user profiles (needed to list doctors)
+      allow read: if request.auth != null;
+      // Users can only write their own profile
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Appointments collection ───────────────────────────────────────────────
+    match /appointments/{appointmentId} {
+      // Patient or Doctor involved can read the appointment
+      allow read: if request.auth != null &&
+        (resource.data.patientId == request.auth.uid ||
+         resource.data.doctorId == request.auth.uid);
+
+      // Patients can create appointments (they are the patient)
+      allow create: if request.auth != null &&
+        request.resource.data.patientId == request.auth.uid;
+
+      // Both patient and doctor can update (status changes, notes)
+      allow update: if request.auth != null &&
+        (resource.data.patientId == request.auth.uid ||
+         resource.data.doctorId == request.auth.uid);
+
+      // Only the patient who created can delete (not needed in this app)
+      allow delete: if request.auth != null &&
+        resource.data.patientId == request.auth.uid;
+    }
+  }
+}

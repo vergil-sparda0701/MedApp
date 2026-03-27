@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.medapp-mergeDebugResources-76:/values-v23/values-v23.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\user\\.gradle\\caches\\9.0.0\\transforms\\1ef4fb4a6b07c2f66bd11577f1879e6a\\transformed\\work-runtime-2.10.0\\res\\values-v23\\values-v23.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,121",
+                        "endColumns": "65,62",
+                        "endOffsets": "116,179"
+                    }
+                }
+            ]
+        }
+    ]
+}
