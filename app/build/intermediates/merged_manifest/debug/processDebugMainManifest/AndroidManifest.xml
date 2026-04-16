@@ -56,6 +56,11 @@
             </intent-filter>
         </service>
 
+        <!-- AlarmManager Receiver -->
+        <receiver
+            android:name="com.medapp.notification.AppointmentReminderReceiver"
+            android:exported="false" />
+
         <!-- WorkManager for scheduled reminders -->
         <provider
             android:name="androidx.startup.InitializationProvider"

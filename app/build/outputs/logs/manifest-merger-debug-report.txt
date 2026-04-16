@@ -1,6 +1,6 @@
 -- Merging decision tree log ---
 provider#androidx.startup.InitializationProvider
-INJECTED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:38:9-47:20
+INJECTED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:43:9-52:20
 MERGED from [androidx.work:work-runtime:2.10.0] C:\Users\user\.gradle\caches\9.0.0\transforms\1ef4fb4a6b07c2f66bd11577f1879e6a\transformed\work-runtime-2.10.0\AndroidManifest.xml:29:9-37:20
 MERGED from [androidx.work:work-runtime:2.10.0] C:\Users\user\.gradle\caches\9.0.0\transforms\1ef4fb4a6b07c2f66bd11577f1879e6a\transformed\work-runtime-2.10.0\AndroidManifest.xml:29:9-37:20
 MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\user\.gradle\caches\9.0.0\transforms\07b51572150adab792f4e1807e20ee71\transformed\emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
@@ -12,21 +12,21 @@ MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\user\.gr
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\user\.gradle\caches\9.0.0\transforms\0714322222136313f943f89a326701d9\transformed\startup-runtime-1.1.1\AndroidManifest.xml:26:9-30:34
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\user\.gradle\caches\9.0.0\transforms\0714322222136313f943f89a326701d9\transformed\startup-runtime-1.1.1\AndroidManifest.xml:26:9-30:34
 	tools:node
-		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:42:13-31
+		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:47:13-31
 	android:authorities
 		INJECTED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml
-		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:40:13-68
+		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:45:13-68
 	xmlns:tools
-		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:43:13-59
+		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:48:13-59
 	android:exported
-		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:41:13-37
+		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:46:13-37
 	android:name
-		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:39:13-67
+		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:44:13-67
 manifest
-ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:2:1-56:12
-INJECTED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:2:1-56:12
-INJECTED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:2:1-56:12
-INJECTED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:2:1-56:12
+ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:2:1-61:12
+INJECTED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:2:1-61:12
+INJECTED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:2:1-61:12
+INJECTED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:2:1-61:12
 MERGED from [io.github.vanpra.compose-material-dialogs:datetime:0.9.0] C:\Users\user\.gradle\caches\9.0.0\transforms\5f0f913d58b8b64812009ec63837c52c\transformed\datetime-0.9.0\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.work:work-runtime-ktx:2.10.0] C:\Users\user\.gradle\caches\9.0.0\transforms\65b7e3a464119cee98541af815730f56\transformed\work-runtime-ktx-2.10.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.work:work-runtime:2.10.0] C:\Users\user\.gradle\caches\9.0.0\transforms\1ef4fb4a6b07c2f66bd11577f1879e6a\transformed\work-runtime-2.10.0\AndroidManifest.xml:17:1-145:12
@@ -189,8 +189,8 @@ ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:8:5-74
 	android:name
 		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:8:22-71
 application
-ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:10:5-54:19
-INJECTED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:10:5-54:19
+ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:10:5-59:19
+INJECTED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:10:5-59:19
 MERGED from [androidx.work:work-runtime:2.10.0] C:\Users\user\.gradle\caches\9.0.0\transforms\1ef4fb4a6b07c2f66bd11577f1879e6a\transformed\work-runtime-2.10.0\AndroidManifest.xml:28:5-143:19
 MERGED from [androidx.work:work-runtime:2.10.0] C:\Users\user\.gradle\caches\9.0.0\transforms\1ef4fb4a6b07c2f66bd11577f1879e6a\transformed\work-runtime-2.10.0\AndroidManifest.xml:28:5-143:19
 MERGED from [com.google.firebase:firebase-auth:23.1.0] C:\Users\user\.gradle\caches\9.0.0\transforms\9ee6c4a424e6936426d81c13410d3f29\transformed\firebase-auth-23.1.0\AndroidManifest.xml:28:5-73:19
@@ -303,20 +303,26 @@ action#com.google.firebase.MESSAGING_EVENT
 ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:33:17-78
 	android:name
 		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:33:25-75
+receiver#com.medapp.notification.AppointmentReminderReceiver
+ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:38:9-40:40
+	android:exported
+		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:40:13-37
+	android:name
+		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:39:13-69
 meta-data#com.google.firebase.messaging.default_notification_channel_id
-ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:50:9-52:48
+ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:55:9-57:48
 	android:value
-		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:52:13-45
+		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:57:13-45
 	android:name
-		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:51:13-89
+		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:56:13-89
 meta-data#androidx.work.WorkManagerInitializer
-ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:44:13-46:52
+ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:49:13-51:52
 MERGED from [androidx.work:work-runtime:2.10.0] C:\Users\user\.gradle\caches\9.0.0\transforms\1ef4fb4a6b07c2f66bd11577f1879e6a\transformed\work-runtime-2.10.0\AndroidManifest.xml:34:13-36:52
 MERGED from [androidx.work:work-runtime:2.10.0] C:\Users\user\.gradle\caches\9.0.0\transforms\1ef4fb4a6b07c2f66bd11577f1879e6a\transformed\work-runtime-2.10.0\AndroidManifest.xml:34:13-36:52
 	android:value
-		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:46:17-49
+		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:51:17-49
 	android:name
-		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:45:17-68
+		ADDED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml:50:17-68
 uses-sdk
 INJECTED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from L:\GitHub\MedApp-v1.0\app\src\main\AndroidManifest.xml

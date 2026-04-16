@@ -1,8 +1,11 @@
 package com.medapp.notification
 
+import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.*
@@ -11,6 +14,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.medapp.model.Appointment
+import com.medapp.model.AppointmentStatus
 import com.medapp.repository.AppointmentRepository
 import com.medapp.repository.AuthRepository
 import com.medapp.viewmodel.buildNotificationContent
@@ -107,8 +111,96 @@ object NotificationHelper {
         val workRequest = OneTimeWorkRequestBuilder<ReminderWorker>()
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
-        
         WorkManager.getInstance(context).enqueue(workRequest)
+    }
+
+    fun scheduleExactAlarm(
+        context: Context,
+        timeInMillis: Long,
+        title: String,
+        body: String,
+        notificationId: Int
+    ) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, AppointmentReminderReceiver::class.java).apply {
+            putExtra("title", title)
+            putExtra("body", body)
+            putExtra("notificationId", notificationId)
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        timeInMillis,
+                        pendingIntent
+                    )
+                } else {
+                    alarmManager.setAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        timeInMillis,
+                        pendingIntent
+                    )
+                }
+            } else {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    timeInMillis,
+                    pendingIntent
+                )
+            }
+        } catch (e: Exception) {
+            // Fallback for exact alarm permission issues
+            alarmManager.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                timeInMillis,
+                pendingIntent
+            )
+        }
+    }
+
+    fun scheduleAllStageReminders(context: Context, appointment: Appointment) {
+        val appointmentTime = appointment.dateTime.toDate().time
+        val now = System.currentTimeMillis()
+
+        val doctor = appointment.doctorName
+        val appId = appointment.id
+
+        // 3 Hours (180 min)
+        val time3h = appointmentTime - (180 * 60 * 1000)
+        if (time3h > now) {
+            scheduleExactAlarm(context, time3h, "Recordatorio de Cita 🏥", 
+                "Tu cita con Dr. $doctor es en unas horas.", (appId + "3h").hashCode())
+        }
+
+        // 1 Day (24h)
+        val time1d = appointmentTime - (24 * 60 * 60 * 1000)
+        if (time1d > now) {
+            scheduleExactAlarm(context, time1d, "Recordatorio de Cita 🏥", 
+                "Recuerda tu cita de mañana con Dr. $doctor.", (appId + "1d").hashCode())
+        }
+
+        // 2 Days (48h)
+        val time2d = appointmentTime - (2 * 24 * 60 * 60 * 1000L)
+        if (time2d > now) {
+            scheduleExactAlarm(context, time2d, "Recordatorio de Cita 🏥", 
+                "Tienes una cita programada en 2 días con Dr. $doctor.", (appId + "2d").hashCode())
+        }
+
+        // 3 Days (72h)
+        val time3d = appointmentTime - (3 * 24 * 60 * 60 * 1000L)
+        if (time3d > now) {
+            scheduleExactAlarm(context, time3d, "Recordatorio de Cita 🏥", 
+                "Tienes una cita programada en 3 días con Dr. $doctor.", (appId + "3d").hashCode())
+        }
     }
 }
 
@@ -125,31 +217,35 @@ class ReminderWorker(
             val appointments = appointmentRepo.getAppointmentsNeedingReminder()
                 .getOrDefault(emptyList())
 
-            val now = System.currentTimeMillis()
+            val nowSeconds = Timestamp.now().seconds
+            val currentUser = FirebaseAuth.getInstance().currentUser ?: return Result.success()
 
-            appointments.forEach { appointment ->
-                val appointmentTime = appointment.dateTime.toDate().time
-                val diffMinutes = (appointmentTime - now) / (1000 * 60)
+            appointments
+                .filter { it.patientId == currentUser.uid } // Solo citas del usuario actual
+                .filter { it.status == AppointmentStatus.PENDING || it.status == AppointmentStatus.CONFIRMED } // Filtro manual de estado
+                .forEach { appointment ->
+                    // Cálculo basado en segundos UTC para evitar errores de zona horaria
+                    val diffMinutes = (appointment.dateTime.seconds - nowSeconds) / 60
 
-                when {
-                    // Recordatorio: Unas horas antes (3h = 180 min)
-                    diffMinutes in 0..180 && !appointment.isReminderHoursSent -> {
-                        sendNotification(appointment, "Tu cita es en unas horas", "isReminderHoursSent")
-                    }
-                    // Recordatorio: 1 día antes (24h = 1440 min)
-                    diffMinutes in 181..1440 && !appointment.isReminder1dSent -> {
-                        sendNotification(appointment, "Tienes una cita mañana", "isReminder1dSent")
-                    }
-                    // Recordatorio: 2 días antes (48h = 2880 min)
-                    diffMinutes in 1441..2880 && !appointment.isReminder2dSent -> {
-                        sendNotification(appointment, "Tienes una cita en 2 días", "isReminder2dSent")
-                    }
-                    // Recordatorio: 3 días antes (72h = 4320 min)
-                    diffMinutes in 2881..4320 && !appointment.isReminder3dSent -> {
-                        sendNotification(appointment, "Tienes una cita en 3 días", "isReminder3dSent")
+                    when {
+                        // Recordatorio: Unas horas antes (3h = 180 min)
+                        diffMinutes in 0..180 && !appointment.isReminderHoursSent -> {
+                            sendNotification(appointment, "Tu cita es en unas horas", "isReminderHoursSent")
+                        }
+                        // Recordatorio: 1 día antes (24h = 1440 min)
+                        diffMinutes in 181..1440 && !appointment.isReminder1dSent -> {
+                            sendNotification(appointment, "Tienes una cita mañana", "isReminder1dSent")
+                        }
+                        // Recordatorio: 2 días antes (48h = 2880 min)
+                        diffMinutes in 1441..2880 && !appointment.isReminder2dSent -> {
+                            sendNotification(appointment, "Tienes una cita en 2 días", "isReminder2dSent")
+                        }
+                        // Recordatorio: 3 días antes (72h = 4320 min)
+                        diffMinutes in 2881..4320 && !appointment.isReminder3dSent -> {
+                            sendNotification(appointment, "Tienes una cita en 3 días", "isReminder3dSent")
+                        }
                     }
                 }
-            }
             Result.success()
         } catch (e: Exception) {
             Result.retry()
@@ -206,6 +302,10 @@ class StatusChangeWorker(
                     // ID único por cita + estado para no sobreescribir otras notificaciones
                     notificationId = (appointment.id + appointment.status.name).hashCode()
                 )
+                // Si la cita fue confirmada, programar sus recordatorios exactos
+                if (appointment.status == AppointmentStatus.CONFIRMED) {
+                    NotificationHelper.scheduleAllStageReminders(context, appointment)
+                }
             }
             Result.success()
         } catch (e: Exception) {

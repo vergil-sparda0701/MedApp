@@ -94,6 +94,10 @@ class AppointmentViewModel(
             // ID único por cita+estado para evitar sobreescribir otras notificaciones
             notificationId = (appointment.id + appointment.status.name).hashCode()
         )
+        // Si la cita fue confirmada, programar sus recordatorios exactos
+        if (appointment.status == AppointmentStatus.CONFIRMED) {
+            NotificationHelper.scheduleAllStageReminders(getApplication(), appointment)
+        }
     }
 
     // ─── Load Pending Appointments ────────────────────────────────────────────
@@ -125,7 +129,8 @@ class AppointmentViewModel(
                 status = AppointmentStatus.PENDING
             )
             repository.createAppointment(appointment).fold(
-                onSuccess = {
+                onSuccess = { createdAppointment ->
+                    NotificationHelper.scheduleAllStageReminders(getApplication(), createdAppointment)
                     NotificationHelper.triggerImmediateReminderCheck(getApplication())
                     _operationResult.value = AppointmentResult.Success
                 },
@@ -140,6 +145,9 @@ class AppointmentViewModel(
             _operationResult.value = AppointmentResult.Loading
             repository.updateStatus(appointmentId, status).fold(
                 onSuccess = {
+                    // Si el doctor confirma, reprogramamos recordatorios exactos (idealmente para el paciente)
+                    // Nota: En una app real, esto lo dispararía una Cloud Function para el paciente.
+                    // Aquí, si el propio usuario está viendo el cambio, lo agendamos localmente.
                     NotificationHelper.triggerImmediateReminderCheck(getApplication())
                     _operationResult.value = AppointmentResult.Success
                 },

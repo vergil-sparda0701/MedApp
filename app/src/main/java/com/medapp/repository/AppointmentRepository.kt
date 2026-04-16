@@ -144,13 +144,9 @@ class AppointmentRepository {
     // ─── Get upcoming appointments for reminder processing ───────────────────
     suspend fun getAppointmentsNeedingReminder(): Result<List<Appointment>> = runCatching {
         val now = Timestamp.now()
-        // Fetch appointments up to 75 hours ahead to cover the 3-day (72h) reminder
-        val in75h = Timestamp(now.seconds + (75 * 3600), 0)
-
+        // Simple query by date to avoid complex index requirements during development
         val snapshot = collection
             .whereGreaterThanOrEqualTo("dateTime", now)
-            .whereLessThanOrEqualTo("dateTime", in75h)
-            .whereIn("status", listOf(AppointmentStatus.PENDING.name, AppointmentStatus.CONFIRMED.name))
             .get().await()
 
         snapshot.documents.mapNotNull { doc ->
