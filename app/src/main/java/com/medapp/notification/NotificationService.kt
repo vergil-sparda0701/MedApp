@@ -10,6 +10,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.medapp.model.Appointment
 import com.medapp.repository.AppointmentRepository
 import com.medapp.repository.AuthRepository
 import com.medapp.viewmodel.buildNotificationContent
@@ -48,12 +49,14 @@ object NotificationHelper {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(com.medapp.R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .build()
 
         manager.notify(notificationId, notification)
@@ -66,15 +69,15 @@ object NotificationHelper {
             .build()
 
         val workRequest = PeriodicWorkRequestBuilder<ReminderWorker>(
-            repeatInterval = 1,
-            repeatIntervalTimeUnit = TimeUnit.HOURS
+            repeatInterval = 15,
+            repeatIntervalTimeUnit = TimeUnit.MINUTES
         )
             .setConstraints(constraints)
             .build()
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "appointment_reminder_check",
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             workRequest
         )
     }
@@ -98,6 +101,15 @@ object NotificationHelper {
             workRequest
         )
     }
+
+    // ─── Trigger an immediate reminder check (one-time) ────────────────────────
+    fun triggerImmediateReminderCheck(context: Context) {
+        val workRequest = OneTimeWorkRequestBuilder<ReminderWorker>()
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .build()
+        
+        WorkManager.getInstance(context).enqueue(workRequest)
+    }
 }
 
 // ─── WorkManager Worker: Recordatorio 24h ────────────────────────────────────
@@ -113,23 +125,47 @@ class ReminderWorker(
             val appointments = appointmentRepo.getAppointmentsNeedingReminder()
                 .getOrDefault(emptyList())
 
+            val now = System.currentTimeMillis()
+
             appointments.forEach { appointment ->
-                // Notify patient
-                NotificationHelper.showAppointmentReminder(
-                    context,
-                    title = "Recordatorio de Cita 🏥",
-                    body = "Tienes una cita con Dr. ${appointment.doctorName} " +
-                            "mañana a las ${formatHour(appointment.dateTime.toDate())}. " +
-                            "Motivo: ${appointment.reason}",
-                    notificationId = appointment.id.hashCode()
-                )
-                // Mark as reminder sent
-                appointmentRepo.markReminderSent(appointment.id)
+                val appointmentTime = appointment.dateTime.toDate().time
+                val diffMinutes = (appointmentTime - now) / (1000 * 60)
+
+                when {
+                    // Recordatorio: Unas horas antes (3h = 180 min)
+                    diffMinutes in 0..180 && !appointment.isReminderHoursSent -> {
+                        sendNotification(appointment, "Tu cita es en unas horas", "isReminderHoursSent")
+                    }
+                    // Recordatorio: 1 día antes (24h = 1440 min)
+                    diffMinutes in 181..1440 && !appointment.isReminder1dSent -> {
+                        sendNotification(appointment, "Tienes una cita mañana", "isReminder1dSent")
+                    }
+                    // Recordatorio: 2 días antes (48h = 2880 min)
+                    diffMinutes in 1441..2880 && !appointment.isReminder2dSent -> {
+                        sendNotification(appointment, "Tienes una cita en 2 días", "isReminder2dSent")
+                    }
+                    // Recordatorio: 3 días antes (72h = 4320 min)
+                    diffMinutes in 2881..4320 && !appointment.isReminder3dSent -> {
+                        sendNotification(appointment, "Tienes una cita en 3 días", "isReminder3dSent")
+                    }
+                }
             }
             Result.success()
         } catch (e: Exception) {
             Result.retry()
         }
+    }
+
+    private suspend fun sendNotification(appointment: Appointment, bodyPrefix: String, flagField: String) {
+        NotificationHelper.showAppointmentReminder(
+            context,
+            title = "Recordatorio de Cita 🏥",
+            body = "$bodyPrefix a las ${formatHour(appointment.dateTime.toDate())} con Dr. ${appointment.doctorName}. " +
+                    "Motivo: ${appointment.reason}",
+            notificationId = (appointment.id + flagField).hashCode()
+        )
+        // Actualizar el flag correspondiente en Firestore
+        appointmentRepo.markReminderAsSent(appointment.id, flagField)
     }
 
     private fun formatHour(date: java.util.Date): String {

@@ -141,15 +141,15 @@ class AppointmentRepository {
         )
     }
 
-    // ─── Get upcoming appointments needing reminder ────────────────────────────
+    // ─── Get upcoming appointments for reminder processing ───────────────────
     suspend fun getAppointmentsNeedingReminder(): Result<List<Appointment>> = runCatching {
         val now = Timestamp.now()
-        val in24h = Timestamp(now.seconds + 86400, 0)
+        // Fetch appointments up to 75 hours ahead to cover the 3-day (72h) reminder
+        val in75h = Timestamp(now.seconds + (75 * 3600), 0)
 
         val snapshot = collection
             .whereGreaterThanOrEqualTo("dateTime", now)
-            .whereLessThanOrEqualTo("dateTime", in24h)
-            .whereEqualTo("reminderSent", false)
+            .whereLessThanOrEqualTo("dateTime", in75h)
             .whereIn("status", listOf(AppointmentStatus.PENDING.name, AppointmentStatus.CONFIRMED.name))
             .get().await()
 
@@ -158,10 +158,10 @@ class AppointmentRepository {
         }
     }
 
-    // ─── Mark reminder sent ───────────────────────────────────────────────────
-    suspend fun markReminderSent(appointmentId: String) {
+    // ─── Mark a specific reminder as sent ────────────────────────────────────
+    suspend fun markReminderAsSent(appointmentId: String, field: String) {
         runCatching {
-            collection.document(appointmentId).update("reminderSent", true).await()
+            collection.document(appointmentId).update(field, true).await()
         }
     }
 

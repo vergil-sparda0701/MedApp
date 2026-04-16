@@ -71,7 +71,10 @@ data class Appointment(
     val reason: String = "",
     val notes: String = "",
     val status: AppointmentStatus = AppointmentStatus.PENDING,
-    val reminderSent: Boolean = false,
+    val isReminder3dSent: Boolean = false,
+    val isReminder2dSent: Boolean = false,
+    val isReminder1dSent: Boolean = false,
+    val isReminderHoursSent: Boolean = false,
     val createdAt: Timestamp = Timestamp.now(),
     val updatedAt: Timestamp = Timestamp.now()
 ) {
@@ -86,7 +89,10 @@ data class Appointment(
         "reason" to reason,
         "notes" to notes,
         "status" to status.name,
-        "reminderSent" to reminderSent,
+        "isReminder3dSent" to isReminder3dSent,
+        "isReminder2dSent" to isReminder2dSent,
+        "isReminder1dSent" to isReminder1dSent,
+        "isReminderHoursSent" to isReminderHoursSent,
         "createdAt" to createdAt,
         "updatedAt" to updatedAt
     )
@@ -103,7 +109,10 @@ data class Appointment(
             reason = map["reason"] as? String ?: "",
             notes = map["notes"] as? String ?: "",
             status = AppointmentStatus.valueOf(map["status"] as? String ?: "PENDING"),
-            reminderSent = map["reminderSent"] as? Boolean ?: false,
+            isReminder3dSent = map["isReminder3dSent"] as? Boolean ?: false,
+            isReminder2dSent = map["isReminder2dSent"] as? Boolean ?: false,
+            isReminder1dSent = map["isReminder1dSent"] as? Boolean ?: false,
+            isReminderHoursSent = map["isReminderHoursSent"] as? Boolean ?: false,
             createdAt = map["createdAt"] as? Timestamp ?: Timestamp.now(),
             updatedAt = map["updatedAt"] as? Timestamp ?: Timestamp.now()
         )

@@ -186,7 +186,7 @@ fun BookAppointmentScreen(
                         Spacer(Modifier.width(8.dp))
                         Text(
                             if (selectedDate != null) {
-                                val cal = Calendar.getInstance().apply { timeInMillis = selectedDate!! }
+                                val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = selectedDate!! }
                                 "${cal.get(Calendar.DAY_OF_MONTH)}/${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.YEAR)}"
                             } else "Fecha"
                         )
@@ -236,11 +236,17 @@ fun BookAppointmentScreen(
             Button(
                 onClick = {
                     val date = selectedDate ?: return@Button
-                    val cal = Calendar.getInstance().apply {
+                    val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
                         timeInMillis = date
+                    }
+                    val cal = Calendar.getInstance().apply {
+                        set(Calendar.YEAR, utcCal.get(Calendar.YEAR))
+                        set(Calendar.MONTH, utcCal.get(Calendar.MONTH))
+                        set(Calendar.DAY_OF_MONTH, utcCal.get(Calendar.DAY_OF_MONTH))
                         set(Calendar.HOUR_OF_DAY, selectedHour)
                         set(Calendar.MINUTE, selectedMinute)
                         set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
                     }
                     appointmentViewModel.bookAppointment(
                         patient = patient,

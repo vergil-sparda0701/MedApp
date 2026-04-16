@@ -125,7 +125,10 @@ class AppointmentViewModel(
                 status = AppointmentStatus.PENDING
             )
             repository.createAppointment(appointment).fold(
-                onSuccess = { _operationResult.value = AppointmentResult.Success },
+                onSuccess = {
+                    NotificationHelper.triggerImmediateReminderCheck(getApplication())
+                    _operationResult.value = AppointmentResult.Success
+                },
                 onFailure = { _operationResult.value = AppointmentResult.Error(it.message ?: "Error") }
             )
         }
@@ -136,7 +139,10 @@ class AppointmentViewModel(
         viewModelScope.launch {
             _operationResult.value = AppointmentResult.Loading
             repository.updateStatus(appointmentId, status).fold(
-                onSuccess = { _operationResult.value = AppointmentResult.Success },
+                onSuccess = {
+                    NotificationHelper.triggerImmediateReminderCheck(getApplication())
+                    _operationResult.value = AppointmentResult.Success
+                },
                 onFailure = { _operationResult.value = AppointmentResult.Error(it.message ?: "Error") }
             )
         }
