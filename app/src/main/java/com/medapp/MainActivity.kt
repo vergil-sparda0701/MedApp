@@ -23,8 +23,11 @@ class MainActivity : ComponentActivity() {
         // Create notification channel
         NotificationHelper.createNotificationChannel(this)
 
-        // Schedule periodic reminder check
+        // Schedule periodic reminder check (24h before appointment)
         NotificationHelper.scheduleReminderCheck(this)
+
+        // Schedule periodic status-change check (notifies patient on confirm/cancel/complete)
+        NotificationHelper.scheduleStatusChangeCheck(this)
 
         setContent {
             MedAppTheme {

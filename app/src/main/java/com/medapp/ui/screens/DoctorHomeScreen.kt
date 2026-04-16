@@ -53,6 +53,11 @@ fun DoctorHomeScreen(
                 today.get(java.util.Calendar.YEAR) == apptCal.get(java.util.Calendar.YEAR)
     }
 
+    // Citas confirmadas pendientes de completar o cancelar
+    val confirmedAppointments = appointments.filter {
+        it.status == AppointmentStatus.CONFIRMED
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -142,7 +147,79 @@ fun DoctorHomeScreen(
                 }
             }
 
-            // Today's appointments
+            // ── Citas Confirmadas ─────────────────────────────────────────────
+            item {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "Citas Confirmadas",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = MedBlueDark
+                    )
+                    if (confirmedAppointments.isNotEmpty()) {
+                        Surface(
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            color = StatusConfirmed
+                        ) {
+                            Text(
+                                "${confirmedAppointments.size}",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (confirmedAppointments.isEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = StatusConfirmed.copy(alpha = 0.06f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                null,
+                                tint = StatusConfirmed.copy(alpha = 0.4f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Sin citas confirmadas por atender",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(confirmedAppointments) { appointment ->
+                    DoctorAppointmentCard(
+                        appointment = appointment,
+                        onStatusChange = { newStatus ->
+                            appointmentViewModel.updateAppointmentStatus(appointment.id, newStatus)
+                        }
+                    )
+                }
+            }
+
+            // ── Citas de Hoy ──────────────────────────────────────────────────
             item {
                 Text(
                     "Citas de Hoy (${todayAppointments.size})",

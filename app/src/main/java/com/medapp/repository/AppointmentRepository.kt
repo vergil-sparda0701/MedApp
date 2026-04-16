@@ -164,4 +164,25 @@ class AppointmentRepository {
             collection.document(appointmentId).update("reminderSent", true).await()
         }
     }
+
+    // ─── Get patient appointments with recent status changes ──────────────────
+    // Usado por StatusChangeWorker y AppointmentViewModel para notificar al paciente
+    // cuando el doctor confirma, cancela o completa una cita.
+    suspend fun getPatientRecentStatusChanges(
+        patientId: String,
+        since: Timestamp
+    ): Result<List<Appointment>> = runCatching {
+        val snapshot = collection
+            .whereEqualTo("patientId", patientId)
+            .whereGreaterThan("updatedAt", since)
+            .get().await()
+
+        snapshot.documents
+            .mapNotNull { doc -> doc.data?.let { Appointment.fromMap(it, doc.id) } }
+            .filter {
+                it.status == AppointmentStatus.CONFIRMED ||
+                it.status == AppointmentStatus.CANCELLED ||
+                it.status == AppointmentStatus.COMPLETED
+            }
+    }
 }

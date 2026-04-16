@@ -4,20 +4,22 @@
             "outputFile": "com.medapp-mergeDebugResources-76:/values/values.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\user\\Documents\\GitHub\\MedApp_AndroidV4\\MedApp\\app\\build\\generated\\res\\processDebugGoogleServices\\values\\values.xml",
+                    "source": "L:\\GitHub\\MedApp\\app\\src\\main\\res\\values\\themes.xml",
                     "from": {
-                        "startLines": "2,3,4,5,6,7",
-                        "startColumns": "4,4,4,4,4,4",
-                        "startOffsets": "55,137,241,350,470,574",
-                        "endColumns": "81,103,108,119,103,72",
-                        "endOffsets": "132,236,345,465,569,642"
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,139",
+                        "endLines": "2,6",
+                        "endColumns": "83,12",
+                        "endOffsets": "134,372"
                     },
                     "to": {
-                        "startLines": "184,185,186,187,188,254",
-                        "startColumns": "4,4,4,4,4,4",
-                        "startOffsets": "12833,12915,13019,13128,13248,18021",
-                        "endColumns": "81,103,108,119,103,72",
-                        "endOffsets": "12910,13014,13123,13243,13347,18089"
+                        "startLines": "312,313",
+                        "startColumns": "4,4",
+                        "startOffsets": "21490,21573",
+                        "endLines": "312,316",
+                        "endColumns": "82,12",
+                        "endOffsets": "21568,21806"
                     }
                 },
                 {
@@ -57,25 +59,6 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\user\\Documents\\GitHub\\MedApp_AndroidV4\\MedApp\\app\\src\\main\\res\\values\\themes.xml",
-                    "from": {
-                        "startLines": "2,3",
-                        "startColumns": "4,4",
-                        "startOffsets": "55,139",
-                        "endLines": "2,6",
-                        "endColumns": "83,12",
-                        "endOffsets": "134,372"
-                    },
-                    "to": {
-                        "startLines": "312,313",
-                        "startColumns": "4,4",
-                        "startOffsets": "21490,21573",
-                        "endLines": "312,316",
-                        "endColumns": "82,12",
-                        "endOffsets": "21568,21806"
-                    }
-                },
-                {
                     "source": "C:\\Users\\user\\.gradle\\caches\\9.0.0\\transforms\\69e08a21d4a74bb8a579f11abd5317ac\\transformed\\credentials-play-services-auth-1.2.0-rc01\\res\\values\\values.xml",
                     "from": {
                         "startLines": "2",
@@ -92,6 +75,23 @@
                         "endLines": "311",
                         "endColumns": "12",
                         "endOffsets": "21485"
+                    }
+                },
+                {
+                    "source": "L:\\GitHub\\MedApp\\app\\build\\generated\\res\\processDebugGoogleServices\\values\\values.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7",
+                        "startColumns": "4,4,4,4,4,4",
+                        "startOffsets": "55,137,241,350,470,574",
+                        "endColumns": "81,103,108,119,103,72",
+                        "endOffsets": "132,236,345,465,569,642"
+                    },
+                    "to": {
+                        "startLines": "184,185,186,187,188,254",
+                        "startColumns": "4,4,4,4,4,4",
+                        "startOffsets": "12833,12915,13019,13128,13248,18021",
+                        "endColumns": "81,103,108,119,103,72",
+                        "endOffsets": "12910,13014,13123,13243,13347,18089"
                     }
                 },
                 {
@@ -200,6 +200,23 @@
                         "startOffsets": "7547,8491",
                         "endColumns": "41,59",
                         "endOffsets": "7584,8546"
+                    }
+                },
+                {
+                    "source": "L:\\GitHub\\MedApp\\app\\src\\main\\res\\values\\strings.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "43",
+                        "endOffsets": "94"
+                    },
+                    "to": {
+                        "startLines": "148",
+                        "startColumns": "4",
+                        "startOffsets": "9236",
+                        "endColumns": "43",
+                        "endOffsets": "9275"
                     }
                 },
                 {
@@ -328,23 +345,6 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\user\\Documents\\GitHub\\MedApp_AndroidV4\\MedApp\\app\\src\\main\\res\\values\\colors.xml",
-                    "from": {
-                        "startLines": "3,2",
-                        "startColumns": "4,4",
-                        "startOffsets": "107,55",
-                        "endColumns": "41,51",
-                        "endOffsets": "144,102"
-                    },
-                    "to": {
-                        "startLines": "39,40",
-                        "startColumns": "4,4",
-                        "startOffsets": "2544,2586",
-                        "endColumns": "41,51",
-                        "endOffsets": "2581,2633"
-                    }
-                },
-                {
                     "source": "C:\\Users\\user\\.gradle\\caches\\9.0.0\\transforms\\1ef4fb4a6b07c2f66bd11577f1879e6a\\transformed\\work-runtime-2.10.0\\res\\values\\values.xml",
                     "from": {
                         "startLines": "2,3,4,5",
@@ -359,23 +359,6 @@
                         "startOffsets": "941,1006,1076,1140",
                         "endColumns": "64,69,63,60",
                         "endOffsets": "1001,1071,1135,1196"
-                    }
-                },
-                {
-                    "source": "C:\\Users\\user\\Documents\\GitHub\\MedApp_AndroidV4\\MedApp\\app\\src\\main\\res\\values\\strings.xml",
-                    "from": {
-                        "startLines": "2",
-                        "startColumns": "4",
-                        "startOffsets": "55",
-                        "endColumns": "43",
-                        "endOffsets": "94"
-                    },
-                    "to": {
-                        "startLines": "148",
-                        "startColumns": "4",
-                        "startOffsets": "9236",
-                        "endColumns": "43",
-                        "endOffsets": "9275"
                     }
                 },
                 {
@@ -395,6 +378,23 @@
                         "endLines": "3,4,13,14,15,16,65,66,67,68,69,70,71,141,267,268,269,271,273,333,346,350",
                         "endColumns": "59,58,68,71,62,71,73,75,75,76,70,68,70,67,80,91,92,12,12,12,12,12",
                         "endOffsets": "265,324,729,801,864,936,4316,4392,4468,4545,4616,4685,4756,8771,18803,18895,18988,19097,19218,22676,23451,23724"
+                    }
+                },
+                {
+                    "source": "L:\\GitHub\\MedApp\\app\\src\\main\\res\\values\\colors.xml",
+                    "from": {
+                        "startLines": "3,2",
+                        "startColumns": "4,4",
+                        "startOffsets": "107,55",
+                        "endColumns": "41,51",
+                        "endOffsets": "144,102"
+                    },
+                    "to": {
+                        "startLines": "39,40",
+                        "startColumns": "4,4",
+                        "startOffsets": "2544,2586",
+                        "endColumns": "41,51",
+                        "endOffsets": "2581,2633"
                     }
                 },
                 {

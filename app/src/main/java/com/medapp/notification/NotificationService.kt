@@ -6,10 +6,13 @@ import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.*
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.medapp.repository.AppointmentRepository
 import com.medapp.repository.AuthRepository
+import com.medapp.viewmodel.buildNotificationContent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -56,6 +59,7 @@ object NotificationHelper {
         manager.notify(notificationId, notification)
     }
 
+    // ─── Worker: recordatorio 24h antes de la cita ────────────────────────────
     fun scheduleReminderCheck(context: Context) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -74,9 +78,29 @@ object NotificationHelper {
             workRequest
         )
     }
+
+    // ─── Worker: detectar cambios de estado para el paciente (background) ─────
+    fun scheduleStatusChangeCheck(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val workRequest = PeriodicWorkRequestBuilder<StatusChangeWorker>(
+            repeatInterval = 15,
+            repeatIntervalTimeUnit = TimeUnit.MINUTES
+        )
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            "appointment_status_change_check",
+            ExistingPeriodicWorkPolicy.KEEP,
+            workRequest
+        )
+    }
 }
 
-// ─── WorkManager Worker ───────────────────────────────────────────────────────
+// ─── WorkManager Worker: Recordatorio 24h ────────────────────────────────────
 class ReminderWorker(
     private val context: Context,
     workerParams: WorkerParameters
@@ -111,6 +135,46 @@ class ReminderWorker(
     private fun formatHour(date: java.util.Date): String {
         val cal = java.util.Calendar.getInstance().apply { time = date }
         return String.format("%02d:%02d", cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE))
+    }
+}
+
+// ─── WorkManager Worker: Cambios de estado de citas (background) ─────────────
+// Se ejecuta cada 15 minutos. Consulta las citas del paciente logueado cuyo
+// campo `updatedAt` cayó en los últimos 20 minutos (15 min + 5 min buffer) y
+// muestra una notificación local si el estado cambió a CONFIRMED/CANCELLED/COMPLETED.
+class StatusChangeWorker(
+    private val context: Context,
+    workerParams: WorkerParameters
+) : CoroutineWorker(context, workerParams) {
+
+    private val appointmentRepo = AppointmentRepository()
+
+    override suspend fun doWork(): Result {
+        // Solo aplica a pacientes. Si no hay sesión activa, salir silenciosamente.
+        val currentUser = FirebaseAuth.getInstance().currentUser ?: return Result.success()
+
+        // Ventana de tiempo: últimos 20 min (intervalo 15 + buffer 5)
+        val since = Timestamp(Timestamp.now().seconds - 1200, 0)
+
+        return try {
+            val changed = appointmentRepo
+                .getPatientRecentStatusChanges(currentUser.uid, since)
+                .getOrDefault(emptyList())
+
+            changed.forEach { appointment ->
+                val (title, body) = buildNotificationContent(appointment)
+                NotificationHelper.showAppointmentReminder(
+                    context = context,
+                    title = title,
+                    body = body,
+                    // ID único por cita + estado para no sobreescribir otras notificaciones
+                    notificationId = (appointment.id + appointment.status.name).hashCode()
+                )
+            }
+            Result.success()
+        } catch (e: Exception) {
+            Result.retry()
+        }
     }
 }
 

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#1565C0</color>
+    <color name="splash_background">#1565C0</color>
+    <string name="app_name">MedApp</string>
+    <string name="gcm_defaultSenderId" translatable="false">870943407575</string>
+    <string name="google_api_key" translatable="false">AIzaSyD7VhZ6NPt6XzpzM0YweQNg2cG4sF0sOfQ</string>
+    <string name="google_app_id" translatable="false">1:870943407575:android:9672ab2ec53a588f199f92</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyD7VhZ6NPt6XzpzM0YweQNg2cG4sF0sOfQ</string>
+    <string name="google_storage_bucket" translatable="false">medapp-635f5.firebasestorage.app</string>
+    <string name="project_id" translatable="false">medapp-635f5</string>
+    <style name="Theme.MedApp" parent="android:Theme.Material.Light.NoActionBar"/>
+    <style name="Theme.MedApp.SplashScreen" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="postSplashScreenTheme">@style/Theme.MedApp</item>
+    </style>
+</resources>

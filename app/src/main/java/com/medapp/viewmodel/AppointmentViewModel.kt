@@ -1,12 +1,14 @@
 package com.medapp.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.medapp.model.Appointment
 import com.medapp.model.AppointmentStats
 import com.medapp.model.AppointmentStatus
 import com.medapp.model.User
+import com.medapp.notification.NotificationHelper
 import com.medapp.repository.AppointmentRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,8 +23,10 @@ sealed class AppointmentResult {
 }
 
 class AppointmentViewModel(
-    private val repository: AppointmentRepository = AppointmentRepository()
-) : ViewModel() {
+    application: Application
+) : AndroidViewModel(application) {
+
+    private val repository = AppointmentRepository()
 
     private val _appointments = MutableStateFlow<List<Appointment>>(emptyList())
     val appointments: StateFlow<List<Appointment>> = _appointments.asStateFlow()
@@ -43,6 +47,8 @@ class AppointmentViewModel(
     val isLoadingHistory: StateFlow<Boolean> = _isLoadingHistory.asStateFlow()
 
     // ─── Load All Appointments ────────────────────────────────────────────────
+    // Para pacientes, detecta cambios de estado en tiempo real y muestra
+    // notificación local cuando el doctor confirma, cancela o completa una cita.
     fun loadAppointments(userId: String, isDoctor: Boolean) {
         viewModelScope.launch {
             val flow = if (isDoctor)
@@ -50,8 +56,44 @@ class AppointmentViewModel(
             else
                 repository.getPatientAppointmentsFlow(userId)
 
-            flow.collect { _appointments.value = it }
+            // Rastreo de estados anteriores para detección de cambios (solo paciente)
+            var isFirstEmission = true
+            var previousStatuses = mapOf<String, AppointmentStatus>()
+
+            flow.collect { appointments ->
+                if (!isDoctor) {
+                    if (!isFirstEmission) {
+                        // Detectar cambios de estado respecto a la emisión anterior
+                        appointments.forEach { appointment ->
+                            val prevStatus = previousStatuses[appointment.id]
+                            val newStatus = appointment.status
+                            val isRelevantChange = newStatus == AppointmentStatus.CONFIRMED ||
+                                    newStatus == AppointmentStatus.CANCELLED ||
+                                    newStatus == AppointmentStatus.COMPLETED
+
+                            if (prevStatus != null && prevStatus != newStatus && isRelevantChange) {
+                                showStatusChangeNotification(appointment)
+                            }
+                        }
+                    }
+                    previousStatuses = appointments.associate { it.id to it.status }
+                    isFirstEmission = false
+                }
+                _appointments.value = appointments
+            }
         }
+    }
+
+    // ─── Muestra notificación local según el nuevo estado ────────────────────
+    private fun showStatusChangeNotification(appointment: Appointment) {
+        val (title, body) = buildNotificationContent(appointment)
+        NotificationHelper.showAppointmentReminder(
+            context = getApplication(),
+            title = title,
+            body = body,
+            // ID único por cita+estado para evitar sobreescribir otras notificaciones
+            notificationId = (appointment.id + appointment.status.name).hashCode()
+        )
     }
 
     // ─── Load Pending Appointments ────────────────────────────────────────────
@@ -136,5 +178,29 @@ class AppointmentViewModel(
 
     fun resetOperationResult() {
         _operationResult.value = AppointmentResult.Idle
+    }
+}
+
+// ─── Contenido de notificación según estado ───────────────────────────────────
+// Función top-level reutilizada también por StatusChangeWorker
+fun buildNotificationContent(appointment: Appointment): Pair<String, String> {
+    val doctorName = appointment.doctorName
+    val dateStr = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+        .format(appointment.dateTime.toDate())
+
+    return when (appointment.status) {
+        AppointmentStatus.CONFIRMED ->
+            "✅ Cita Confirmada" to
+                    "Tu cita con Dr. $doctorName el $dateStr ha sido confirmada."
+
+        AppointmentStatus.CANCELLED ->
+            "❌ Cita Cancelada" to
+                    "Tu cita con Dr. $doctorName el $dateStr ha sido cancelada."
+
+        AppointmentStatus.COMPLETED ->
+            "🏁 Cita Completada" to
+                    "Tu cita con Dr. $doctorName el $dateStr ha sido marcada como completada."
+
+        else -> "MedApp" to "Tu cita con Dr. $doctorName ha sido actualizada."
     }
 }
