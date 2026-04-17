@@ -213,7 +213,7 @@ fun DoctorHomeScreen(
                     DoctorAppointmentCard(
                         appointment = appointment,
                         onStatusChange = { newStatus ->
-                            appointmentViewModel.updateAppointmentStatus(appointment.id, newStatus)
+                            appointmentViewModel.updateAppointmentStatus(appointment.id, newStatus, user.uid)
                         }
                     )
                 }
@@ -260,7 +260,7 @@ fun DoctorHomeScreen(
                     DoctorAppointmentCard(
                         appointment = appointment,
                         onStatusChange = { newStatus ->
-                            appointmentViewModel.updateAppointmentStatus(appointment.id, newStatus)
+                            appointmentViewModel.updateAppointmentStatus(appointment.id, newStatus, user.uid)
                         }
                     )
                 }

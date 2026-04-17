@@ -75,6 +75,7 @@ data class Appointment(
     val isReminder2dSent: Boolean = false,
     val isReminder1dSent: Boolean = false,
     val isReminderHoursSent: Boolean = false,
+    val lastUpdatedBy: String = "",
     val createdAt: Timestamp = Timestamp.now(),
     val updatedAt: Timestamp = Timestamp.now()
 ) {
@@ -93,6 +94,7 @@ data class Appointment(
         "isReminder2dSent" to isReminder2dSent,
         "isReminder1dSent" to isReminder1dSent,
         "isReminderHoursSent" to isReminderHoursSent,
+        "lastUpdatedBy" to lastUpdatedBy,
         "createdAt" to createdAt,
         "updatedAt" to updatedAt
     )
@@ -113,6 +115,7 @@ data class Appointment(
             isReminder2dSent = map["isReminder2dSent"] as? Boolean ?: false,
             isReminder1dSent = map["isReminder1dSent"] as? Boolean ?: false,
             isReminderHoursSent = map["isReminderHoursSent"] as? Boolean ?: false,
+            lastUpdatedBy = map["lastUpdatedBy"] as? String ?: "",
             createdAt = map["createdAt"] as? Timestamp ?: Timestamp.now(),
             updatedAt = map["updatedAt"] as? Timestamp ?: Timestamp.now()
         )

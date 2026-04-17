@@ -294,17 +294,20 @@ class StatusChangeWorker(
                 .getOrDefault(emptyList())
 
             changed.forEach { appointment ->
-                val (title, body) = buildNotificationContent(appointment)
-                NotificationHelper.showAppointmentReminder(
-                    context = context,
-                    title = title,
-                    body = body,
-                    // ID único por cita + estado para no sobreescribir otras notificaciones
-                    notificationId = (appointment.id + appointment.status.name).hashCode()
-                )
-                // Si la cita fue confirmada, programar sus recordatorios exactos
-                if (appointment.status == AppointmentStatus.CONFIRMED) {
-                    NotificationHelper.scheduleAllStageReminders(context, appointment)
+                val isNotMe = appointment.lastUpdatedBy.isNotEmpty() && appointment.lastUpdatedBy != currentUser.uid
+                if (isNotMe) {
+                    val (title, body) = buildNotificationContent(appointment)
+                    NotificationHelper.showAppointmentReminder(
+                        context = context,
+                        title = title,
+                        body = body,
+                        // ID único por cita + estado para no sobreescribir otras notificaciones
+                        notificationId = (appointment.id + appointment.status.name).hashCode()
+                    )
+                    // Si la cita fue confirmada, programar sus recordatorios exactos
+                    if (appointment.status == AppointmentStatus.CONFIRMED) {
+                        NotificationHelper.scheduleAllStageReminders(context, appointment)
+                    }
                 }
             }
             Result.success()

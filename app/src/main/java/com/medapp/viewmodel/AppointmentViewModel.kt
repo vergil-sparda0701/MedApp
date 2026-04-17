@@ -71,7 +71,8 @@ class AppointmentViewModel(
                                     newStatus == AppointmentStatus.CANCELLED ||
                                     newStatus == AppointmentStatus.COMPLETED
 
-                            if (prevStatus != null && prevStatus != newStatus && isRelevantChange) {
+                            val isNotMe = appointment.lastUpdatedBy.isNotEmpty() && appointment.lastUpdatedBy != userId
+                            if (prevStatus != null && prevStatus != newStatus && isRelevantChange && isNotMe) {
                                 showStatusChangeNotification(appointment)
                             }
                         }
@@ -140,10 +141,10 @@ class AppointmentViewModel(
     }
 
     // ─── Update Status ────────────────────────────────────────────────────────
-    fun updateAppointmentStatus(appointmentId: String, status: AppointmentStatus) {
+    fun updateAppointmentStatus(appointmentId: String, status: AppointmentStatus, currentUserId: String) {
         viewModelScope.launch {
             _operationResult.value = AppointmentResult.Loading
-            repository.updateStatus(appointmentId, status).fold(
+            repository.updateStatus(appointmentId, status, currentUserId).fold(
                 onSuccess = {
                     // Si el doctor confirma, reprogramamos recordatorios exactos (idealmente para el paciente)
                     // Nota: En una app real, esto lo dispararía una Cloud Function para el paciente.

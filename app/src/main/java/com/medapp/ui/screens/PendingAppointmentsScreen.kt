@@ -94,7 +94,7 @@ fun PendingAppointmentsScreen(
                             DoctorAppointmentCard(
                                 appointment = appointment,
                                 onStatusChange = { status ->
-                                    appointmentViewModel.updateAppointmentStatus(appointment.id, status)
+                                    appointmentViewModel.updateAppointmentStatus(appointment.id, status, user.uid)
                                 }
                             )
                         } else {
@@ -153,7 +153,8 @@ fun PendingAppointmentsScreen(
                                             onClick = {
                                                 appointmentViewModel.updateAppointmentStatus(
                                                     appointment.id,
-                                                    AppointmentStatus.CANCELLED
+                                                    AppointmentStatus.CANCELLED,
+                                                    user.uid
                                                 )
                                             },
                                             modifier = Modifier.fillMaxWidth(),

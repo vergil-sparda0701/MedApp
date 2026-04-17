@@ -20,7 +20,10 @@ class AppointmentRepository {
     // ─── Create Appointment ───────────────────────────────────────────────────
     suspend fun createAppointment(appointment: Appointment): Result<Appointment> = runCatching {
         val docRef = collection.document()
-        val withId = appointment.copy(id = docRef.id)
+        val withId = appointment.copy(
+            id = docRef.id,
+            lastUpdatedBy = appointment.patientId
+        )
         docRef.set(withId.toMap()).await()
         withId
     }
@@ -75,10 +78,11 @@ class AppointmentRepository {
     }
 
     // ─── Update Appointment Status ────────────────────────────────────────────
-    suspend fun updateStatus(appointmentId: String, status: AppointmentStatus): Result<Unit> = runCatching {
+    suspend fun updateStatus(appointmentId: String, status: AppointmentStatus, updatedBy: String): Result<Unit> = runCatching {
         collection.document(appointmentId).update(
             mapOf(
                 "status" to status.name,
+                "lastUpdatedBy" to updatedBy,
                 "updatedAt" to Timestamp.now()
             )
         ).await()
