@@ -8,8 +8,10 @@ import com.medapp.model.Appointment
 import com.medapp.model.AppointmentStats
 import com.medapp.model.AppointmentStatus
 import com.medapp.model.User
+import com.medapp.notification.EmailService
 import com.medapp.notification.NotificationHelper
 import com.medapp.repository.AppointmentRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -122,6 +124,7 @@ class AppointmentViewModel(
             val appointment = Appointment(
                 patientId = patient.uid,
                 patientName = patient.name,
+                patientEmail = patient.email,
                 doctorId = doctor.uid,
                 doctorName = doctor.name,
                 doctorSpecialty = doctor.specialty,
@@ -133,6 +136,19 @@ class AppointmentViewModel(
                 onSuccess = { createdAppointment ->
                     NotificationHelper.scheduleAllStageReminders(getApplication(), createdAppointment)
                     NotificationHelper.triggerImmediateReminderCheck(getApplication())
+                    // Enviar email de confirmación inmediata al paciente
+                    if (patient.email.isNotBlank()) {
+                        launch(Dispatchers.IO) {
+                            EmailService.sendBookingConfirmationEmail(
+                                toEmail         = patient.email,
+                                patientName     = patient.name,
+                                doctorName      = doctor.name,
+                                doctorSpecialty = doctor.specialty,
+                                appointmentDate = dateTime.toDate(),
+                                reason          = reason
+                            )
+                        }
+                    }
                     _operationResult.value = AppointmentResult.Success
                 },
                 onFailure = { _operationResult.value = AppointmentResult.Error(it.message ?: "Error") }

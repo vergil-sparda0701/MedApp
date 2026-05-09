@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.work.*
 import com.google.firebase.Timestamp
@@ -15,12 +16,15 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.medapp.model.Appointment
 import com.medapp.model.AppointmentStatus
+import com.medapp.notification.EmailService.ReminderType
+import com.medapp.notification.EmailService.StatusEmailType
 import com.medapp.repository.AppointmentRepository
 import com.medapp.repository.AuthRepository
 import com.medapp.viewmodel.buildNotificationContent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 // ─── Notification Channel IDs ─────────────────────────────────────────────────
@@ -67,6 +71,7 @@ object NotificationHelper {
     }
 
     // ─── Worker: recordatorio 24h antes de la cita ────────────────────────────
+    @RequiresApi(Build.VERSION_CODES.GINGERBREAD)
     fun scheduleReminderCheck(context: Context) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -119,13 +124,25 @@ object NotificationHelper {
         timeInMillis: Long,
         title: String,
         body: String,
-        notificationId: Int
+        notificationId: Int,
+        patientEmail: String = "",
+        patientName: String = "",
+        doctorName: String = "",
+        appointmentDate: Long = 0,
+        reason: String = "",
+        reminderType: String = ""
     ) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, AppointmentReminderReceiver::class.java).apply {
             putExtra("title", title)
             putExtra("body", body)
             putExtra("notificationId", notificationId)
+            putExtra("patientEmail", patientEmail)
+            putExtra("patientName", patientName)
+            putExtra("doctorName", doctorName)
+            putExtra("appointmentDate", appointmentDate)
+            putExtra("reason", reason)
+            putExtra("reminderType", reminderType)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
@@ -158,7 +175,6 @@ object NotificationHelper {
                 )
             }
         } catch (e: Exception) {
-            // Fallback for exact alarm permission issues
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 timeInMillis,
@@ -171,35 +187,50 @@ object NotificationHelper {
         val appointmentTime = appointment.dateTime.toDate().time
         val now = System.currentTimeMillis()
 
-        val doctor = appointment.doctorName
+        val patientName = appointment.patientName
+        val patientEmail = appointment.patientEmail
+        val doctorName = appointment.doctorName
+        val reason = appointment.reason
         val appId = appointment.id
 
         // 3 Hours (180 min)
         val time3h = appointmentTime - (180 * 60 * 1000)
         if (time3h > now) {
-            scheduleExactAlarm(context, time3h, "Recordatorio de Cita 🏥", 
-                "Tu cita con Dr. $doctor es en unas horas.", (appId + "3h").hashCode())
+            scheduleExactAlarm(
+                context, time3h, "Recordatorio de Cita 🏥",
+                "Tu cita con Dr. $doctorName es en unas horas.", (appId + "3h").hashCode(),
+                patientEmail, patientName, doctorName, appointmentTime, reason, "HOURS"
+            )
         }
 
         // 1 Day (24h)
         val time1d = appointmentTime - (24 * 60 * 60 * 1000)
         if (time1d > now) {
-            scheduleExactAlarm(context, time1d, "Recordatorio de Cita 🏥", 
-                "Recuerda tu cita de mañana con Dr. $doctor.", (appId + "1d").hashCode())
+            scheduleExactAlarm(
+                context, time1d, "Recordatorio de Cita 🏥",
+                "Recuerda tu cita de mañana con Dr. $doctorName.", (appId + "1d").hashCode(),
+                patientEmail, patientName, doctorName, appointmentTime, reason, "ONE_DAY"
+            )
         }
 
         // 2 Days (48h)
         val time2d = appointmentTime - (2 * 24 * 60 * 60 * 1000L)
         if (time2d > now) {
-            scheduleExactAlarm(context, time2d, "Recordatorio de Cita 🏥", 
-                "Tienes una cita programada en 2 días con Dr. $doctor.", (appId + "2d").hashCode())
+            scheduleExactAlarm(
+                context, time2d, "Recordatorio de Cita 🏥",
+                "Tienes una cita programada en 2 días con Dr. $doctorName.", (appId + "2d").hashCode(),
+                patientEmail, patientName, doctorName, appointmentTime, reason, "TWO_DAYS"
+            )
         }
 
         // 3 Days (72h)
         val time3d = appointmentTime - (3 * 24 * 60 * 60 * 1000L)
         if (time3d > now) {
-            scheduleExactAlarm(context, time3d, "Recordatorio de Cita 🏥", 
-                "Tienes una cita programada en 3 días con Dr. $doctor.", (appId + "3d").hashCode())
+            scheduleExactAlarm(
+                context, time3d, "Recordatorio de Cita 🏥",
+                "Tienes una cita programada en 3 días con Dr. $doctorName.", (appId + "3d").hashCode(),
+                patientEmail, patientName, doctorName, appointmentTime, reason, "THREE_DAYS"
+            )
         }
     }
 }
@@ -230,19 +261,19 @@ class ReminderWorker(
                     when {
                         // Recordatorio: Unas horas antes (3h = 180 min)
                         diffMinutes in 0..180 && !appointment.isReminderHoursSent -> {
-                            sendNotification(appointment, "Tu cita es en unas horas", "isReminderHoursSent")
+                            sendNotification(appointment, "Tu cita es en unas horas", "isReminderHoursSent", ReminderType.HOURS)
                         }
                         // Recordatorio: 1 día antes (24h = 1440 min)
                         diffMinutes in 181..1440 && !appointment.isReminder1dSent -> {
-                            sendNotification(appointment, "Tienes una cita mañana", "isReminder1dSent")
+                            sendNotification(appointment, "Tienes una cita mañana", "isReminder1dSent", ReminderType.ONE_DAY)
                         }
                         // Recordatorio: 2 días antes (48h = 2880 min)
                         diffMinutes in 1441..2880 && !appointment.isReminder2dSent -> {
-                            sendNotification(appointment, "Tienes una cita en 2 días", "isReminder2dSent")
+                            sendNotification(appointment, "Tienes una cita en 2 días", "isReminder2dSent", ReminderType.TWO_DAYS)
                         }
                         // Recordatorio: 3 días antes (72h = 4320 min)
                         diffMinutes in 2881..4320 && !appointment.isReminder3dSent -> {
-                            sendNotification(appointment, "Tienes una cita en 3 días", "isReminder3dSent")
+                            sendNotification(appointment, "Tienes una cita en 3 días", "isReminder3dSent", ReminderType.THREE_DAYS)
                         }
                     }
                 }
@@ -252,7 +283,13 @@ class ReminderWorker(
         }
     }
 
-    private suspend fun sendNotification(appointment: Appointment, bodyPrefix: String, flagField: String) {
+    private suspend fun sendNotification(
+        appointment: Appointment,
+        bodyPrefix: String,
+        flagField: String,
+        reminderType: ReminderType
+    ) {
+        // 1. Notificación push local
         NotificationHelper.showAppointmentReminder(
             context,
             title = "Recordatorio de Cita 🏥",
@@ -260,7 +297,23 @@ class ReminderWorker(
                     "Motivo: ${appointment.reason}",
             notificationId = (appointment.id + flagField).hashCode()
         )
-        // Actualizar el flag correspondiente en Firestore
+        // 2. Email via Resend: usar patientEmail del documento; fallback a Firestore para citas antiguas
+        val email = appointment.patientEmail.ifBlank {
+            appointmentRepo.getPatientEmail(appointment.patientId) ?: ""
+        }
+        if (email.isNotBlank()) {
+            withContext(Dispatchers.IO) {
+                EmailService.sendReminderEmail(
+                    toEmail         = email,
+                    patientName     = appointment.patientName,
+                    doctorName      = appointment.doctorName,
+                    appointmentDate = appointment.dateTime.toDate(),
+                    reason          = appointment.reason,
+                    reminderType    = reminderType
+                )
+            }
+        }
+        // 3. Actualizar el flag correspondiente en Firestore
         appointmentRepo.markReminderAsSent(appointment.id, flagField)
     }
 
@@ -297,6 +350,7 @@ class StatusChangeWorker(
                 val isNotMe = appointment.lastUpdatedBy.isNotEmpty() && appointment.lastUpdatedBy != currentUser.uid
                 if (isNotMe) {
                     val (title, body) = buildNotificationContent(appointment)
+                    // 1. Notificación push local
                     NotificationHelper.showAppointmentReminder(
                         context = context,
                         title = title,
@@ -304,7 +358,28 @@ class StatusChangeWorker(
                         // ID único por cita + estado para no sobreescribir otras notificaciones
                         notificationId = (appointment.id + appointment.status.name).hashCode()
                     )
-                    // Si la cita fue confirmada, programar sus recordatorios exactos
+                    // 2. Email via Resend: usar patientEmail del documento; fallback a Firestore para citas antiguas
+                    val email = appointment.patientEmail.ifBlank {
+                        appointmentRepo.getPatientEmail(appointment.patientId) ?: ""
+                    }
+                    val statusEmailType = when (appointment.status) {
+                        AppointmentStatus.CONFIRMED  -> StatusEmailType.CONFIRMED
+                        AppointmentStatus.CANCELLED  -> StatusEmailType.CANCELLED
+                        AppointmentStatus.COMPLETED  -> StatusEmailType.COMPLETED
+                        else                         -> null
+                    }
+                    if (email.isNotBlank() && statusEmailType != null) {
+                        withContext(Dispatchers.IO) {
+                            EmailService.sendStatusChangeEmail(
+                                toEmail         = email,
+                                patientName     = appointment.patientName,
+                                doctorName      = appointment.doctorName,
+                                appointmentDate = appointment.dateTime.toDate(),
+                                newStatus       = statusEmailType
+                            )
+                        }
+                    }
+                    // 3. Si la cita fue confirmada, programar sus recordatorios exactos
                     if (appointment.status == AppointmentStatus.CONFIRMED) {
                         NotificationHelper.scheduleAllStageReminders(context, appointment)
                     }

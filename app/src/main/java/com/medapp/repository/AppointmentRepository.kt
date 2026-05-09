@@ -185,4 +185,10 @@ class AppointmentRepository {
                 it.status == AppointmentStatus.COMPLETED
             }
     }
+
+    // ─── Get patient email for email reminders ────────────────────────────────
+    suspend fun getPatientEmail(patientId: String): String? = runCatching {
+        val doc = db.collection("users").document(patientId).get().await()
+        doc.getString("email")?.takeIf { it.isNotBlank() }
+    }.getOrNull()
 }
