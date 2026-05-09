@@ -18,7 +18,7 @@ object EmailService {
     private const val API_KEY = "re_CD7RHh1z_2yiCH3433oLtoj3nYkybkbgL"
 
     // Dirección "from" verificada en Resend
-    private const val FROM_ADDRESS = "MedApp <no-reply@medapp.lat>"
+    private const val FROM_ADDRESS = "MedApp <info@medapp.lat>"
 
     // ─── Recordatorio de proximidad de cita ───────────────────────────────────
     fun sendReminderEmail(

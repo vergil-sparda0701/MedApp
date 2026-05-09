@@ -5,7 +5,7 @@ import com.google.firebase.Timestamp
 // crear roles de usuarios
 enum class UserRole { PATIENT, DOCTOR }
 
-// crear modelo de usuario
+// crea el modelo de usuario
 data class User(
     val uid: String = "",
     val name: String = "",
@@ -16,7 +16,7 @@ data class User(
     val fcmToken: String = "",
     val createdAt: Timestamp = Timestamp.now()
 ) {
-    // estructura de datos para guardar los datos en firebase
+    // estructura de datos para guardar los datos del en firebase
     fun toMap(): Map<String, Any> = mapOf(
         "uid" to uid,
         "name" to name,
@@ -59,7 +59,7 @@ enum class AppointmentStatus {
     }
 }
 
-// ─── Appointment Model ────────────────────────────────────────────────────────
+// crear modelo para las citas
 data class Appointment(
     val id: String = "",
     val patientId: String = "",
@@ -125,7 +125,7 @@ data class Appointment(
     }
 }
 
-// ─── Statistics Model ─────────────────────────────────────────────────────────
+// modelo para las estadisticas
 data class AppointmentStats(
     val total: Int = 0,
     val pending: Int = 0,
