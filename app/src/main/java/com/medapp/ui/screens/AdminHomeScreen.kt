@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.medapp.model.Appointment
 import com.medapp.model.AppointmentStatus
+import com.medapp.model.DoctorSchedule
+import com.medapp.model.ShiftType
 import com.medapp.model.User
 import com.medapp.model.UserRole
 import com.medapp.viewmodel.AdminState
@@ -268,6 +270,10 @@ fun EditUserDialog(user: User, adminViewModel: AdminViewModel, onDismiss: () -> 
     val specialtiesState by adminViewModel.specialtiesState.collectAsState()
     var specialtyDropdownExpanded by remember { mutableStateOf(false) }
 
+    // Schedule states
+    var workingDays by remember { mutableStateOf(user.schedule?.workingDays?.toSet() ?: emptySet()) }
+    var shiftType by remember { mutableStateOf(user.schedule?.shiftType ?: ShiftType.FULL_DAY) }
+
     // Estado para el envío de correo de restablecimiento de contraseña
     var passwordResetMessage by remember { mutableStateOf<String?>(null) }
     var sendingReset by remember { mutableStateOf(false) }
@@ -416,6 +422,51 @@ fun EditUserDialog(user: User, adminViewModel: AdminViewModel, onDismiss: () -> 
                             )
                         }
                     }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Días de trabajo:", style = MaterialTheme.typography.labelMedium)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val days = listOf(
+                            java.util.Calendar.MONDAY to "Lun",
+                            java.util.Calendar.TUESDAY to "Mar",
+                            java.util.Calendar.WEDNESDAY to "Mié",
+                            java.util.Calendar.THURSDAY to "Jue",
+                            java.util.Calendar.FRIDAY to "Vie",
+                            java.util.Calendar.SATURDAY to "Sáb",
+                            java.util.Calendar.SUNDAY to "Dom"
+                        )
+                        days.forEach { (calDay, label) ->
+                            FilterChip(
+                                selected = workingDays.contains(calDay),
+                                onClick = { 
+                                    if (workingDays.contains(calDay)) {
+                                        workingDays = workingDays - calDay
+                                    } else {
+                                        workingDays = workingDays + calDay
+                                    }
+                                },
+                                label = { Text(label) }
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Horario / Turno:", style = MaterialTheme.typography.labelMedium)
+                    Column {
+                        ShiftType.entries.forEach { shift ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(
+                                    selected = shiftType == shift,
+                                    onClick = { shiftType = shift }
+                                )
+                                Text(shift.displayName)
+                            }
+                        }
+                    }
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -478,7 +529,8 @@ fun EditUserDialog(user: User, adminViewModel: AdminViewModel, onDismiss: () -> 
                             phone = phone,
                             email = email,
                             assignedDoctorIds = selectedDoctorIds.toList(),
-                            specialty = specialty
+                            specialty = specialty,
+                            schedule = if (userRole == UserRole.DOCTOR) DoctorSchedule(workingDays.toList(), shiftType) else user.schedule
                         )
                     )
                     onDismiss()
@@ -520,6 +572,10 @@ fun CreateUserDialog(adminViewModel: AdminViewModel, onDismiss: () -> Unit) {
     
     val specialtiesState by adminViewModel.specialtiesState.collectAsState()
     var specialtyDropdownExpanded by remember { mutableStateOf(false) }
+
+    // Schedule states
+    var workingDays by remember { mutableStateOf(emptySet<Int>()) }
+    var shiftType by remember { mutableStateOf(ShiftType.FULL_DAY) }
 
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -640,6 +696,51 @@ fun CreateUserDialog(adminViewModel: AdminViewModel, onDismiss: () -> Unit) {
                             )
                         }
                     }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Días de trabajo:", style = MaterialTheme.typography.labelMedium)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val days = listOf(
+                            java.util.Calendar.MONDAY to "Lun",
+                            java.util.Calendar.TUESDAY to "Mar",
+                            java.util.Calendar.WEDNESDAY to "Mié",
+                            java.util.Calendar.THURSDAY to "Jue",
+                            java.util.Calendar.FRIDAY to "Vie",
+                            java.util.Calendar.SATURDAY to "Sáb",
+                            java.util.Calendar.SUNDAY to "Dom"
+                        )
+                        days.forEach { (calDay, label) ->
+                            FilterChip(
+                                selected = workingDays.contains(calDay),
+                                onClick = { 
+                                    if (workingDays.contains(calDay)) {
+                                        workingDays = workingDays - calDay
+                                    } else {
+                                        workingDays = workingDays + calDay
+                                    }
+                                },
+                                label = { Text(label) }
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Horario / Turno:", style = MaterialTheme.typography.labelMedium)
+                    Column {
+                        ShiftType.entries.forEach { shift ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(
+                                    selected = shiftType == shift,
+                                    onClick = { shiftType = shift }
+                                )
+                                Text(shift.displayName)
+                            }
+                        }
+                    }
                 }
 
                 if (selectedRole == UserRole.RECEPTIONIST) {
@@ -710,7 +811,7 @@ fun CreateUserDialog(adminViewModel: AdminViewModel, onDismiss: () -> Unit) {
         },
         confirmButton = {
             val isValid = name.isNotBlank() && email.isNotBlank() && phone.isNotBlank() && password.isNotBlank() &&
-                    (selectedRole == UserRole.RECEPTIONIST && selectedDoctorIds.isNotEmpty() || selectedRole == UserRole.DOCTOR && specialty.isNotBlank())
+                    (selectedRole == UserRole.RECEPTIONIST && selectedDoctorIds.isNotEmpty() || selectedRole == UserRole.DOCTOR && specialty.isNotBlank() && workingDays.isNotEmpty())
             
             Button(
                 onClick = {
@@ -722,6 +823,7 @@ fun CreateUserDialog(adminViewModel: AdminViewModel, onDismiss: () -> Unit) {
                         phone = phone,
                         role = selectedRole,
                         specialty = if (selectedRole == UserRole.DOCTOR) specialty else "",
+                        schedule = if (selectedRole == UserRole.DOCTOR) DoctorSchedule(workingDays.toList(), shiftType) else null,
                         assignedDoctorIds = if (selectedRole == UserRole.RECEPTIONIST) selectedDoctorIds.toList() else emptyList()
                     )
                 },

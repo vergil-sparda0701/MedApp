@@ -55,17 +55,31 @@ fun BookAppointmentScreen(
     var selectedHour by remember { mutableIntStateOf(9) }
     var selectedMinute by remember { mutableIntStateOf(0) }
 
+    var timeError by remember { mutableStateOf<String?>(null) }
+
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = System.currentTimeMillis() + 86400000L,
         selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+                    timeInMillis = utcTimeMillis
+                }
                 val today = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
                     set(Calendar.HOUR_OF_DAY, 0)
                     set(Calendar.MINUTE, 0)
                     set(Calendar.SECOND, 0)
                     set(Calendar.MILLISECOND, 0)
                 }.timeInMillis
-                return utcTimeMillis >= today
+                
+                if (utcTimeMillis < today) return false
+                
+                val doctorSchedule = selectedDoctor?.schedule
+                if (doctorSchedule == null || doctorSchedule.workingDays.isEmpty()) {
+                    return true
+                }
+                
+                val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+                return doctorSchedule.workingDays.contains(dayOfWeek)
             }
         }
     )
@@ -89,6 +103,7 @@ fun BookAppointmentScreen(
             onDismiss = { showDoctorPicker = false },
             onSelect = { doctor ->
                 selectedDoctor = doctor
+                timeError = null
                 showDoctorPicker = false
             },
             onRetry = { authViewModel.loadDoctors() }
@@ -116,16 +131,40 @@ fun BookAppointmentScreen(
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
             title = { Text("Seleccionar hora") },
-            text = { TimePicker(state = timePickerState) },
+            text = { 
+                Column {
+                    TimePicker(state = timePickerState)
+                    timeError?.let {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
-                    selectedHour = timePickerState.hour
-                    selectedMinute = timePickerState.minute
-                    showTimePicker = false
+                    val shift = selectedDoctor?.schedule?.shiftType
+                    val hour = timePickerState.hour
+                    val isValidTime = when (shift) {
+                        com.medapp.model.ShiftType.MORNING -> hour in 8..11
+                        com.medapp.model.ShiftType.AFTERNOON -> hour in 14..16
+                        com.medapp.model.ShiftType.FULL_DAY -> (hour in 8..11) || (hour in 14..16)
+                        null -> true
+                    }
+                    if (isValidTime) {
+                        selectedHour = timePickerState.hour
+                        selectedMinute = timePickerState.minute
+                        timeError = null
+                        showTimePicker = false
+                    } else {
+                        timeError = "Hora fuera del horario del doctor (${shift?.displayName})."
+                    }
                 }) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) { Text("Cancelar") }
+                TextButton(onClick = { 
+                    timeError = null
+                    showTimePicker = false 
+                }) { Text("Cancelar") }
             }
         )
     }
@@ -167,6 +206,10 @@ fun BookAppointmentScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Dr. ${selectedDoctor!!.name}", fontWeight = FontWeight.Bold)
                             Text(selectedDoctor!!.specialty, color = Color.Gray, fontSize = 13.sp)
+                            selectedDoctor!!.schedule?.let { schedule ->
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Turno: ${schedule.shiftType.displayName}", color = MedTeal, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            }
                         }
                         TextButton(onClick = { showDoctorPicker = true }) {
                             Text("Cambiar")

@@ -13,18 +13,20 @@ data class User(
     val phone: String = "",
     val role: UserRole = UserRole.PATIENT,
     val specialty: String = "",       // para doctores
+    val schedule: DoctorSchedule? = null, // horario de trabajo para doctores
     val assignedDoctorIds: List<String> = emptyList(),// para recepcionistas
     val fcmToken: String = "",
     val createdAt: Timestamp = Timestamp.now()
 ) {
     // estructura de datos para guardar los datos del en firebase
-    fun toMap(): Map<String, Any> = mapOf(
+    fun toMap(): Map<String, Any?> = mapOf(
         "uid" to uid,
         "name" to name,
         "email" to email,
         "phone" to phone,
         "role" to role.name,
         "specialty" to specialty,
+        "schedule" to schedule?.toMap(),
         "assignedDoctorIds" to assignedDoctorIds,
         "fcmToken" to fcmToken,
         "createdAt" to createdAt
@@ -39,9 +41,40 @@ data class User(
             phone = map["phone"] as? String ?: "",
             role = UserRole.valueOf(map["role"] as? String ?: "PATIENT"),
             specialty = map["specialty"] as? String ?: "",
+            schedule = (map["schedule"] as? Map<String, Any?>)?.let { DoctorSchedule.fromMap(it) },
             assignedDoctorIds = (map["assignedDoctorIds"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
             fcmToken = map["fcmToken"] as? String ?: "",
             createdAt = map["createdAt"] as? Timestamp ?: Timestamp.now()
+        )
+    }
+}
+
+// tipos de turnos para los doctores
+enum class ShiftType(val displayName: String) {
+    MORNING("Turno Mañana (8 AM - 12 PM)"),
+    AFTERNOON("Turno Tarde (2 PM - 5 PM)"),
+    FULL_DAY("Jornada Completa (8 AM - 5 PM, con descanso)")
+}
+
+// modelo para el horario del doctor
+data class DoctorSchedule(
+    // Lista de días que trabaja. Usaremos Calendar.MONDAY, etc. (o enteros 1=Dom, 2=Lun, etc.)
+    val workingDays: List<Int> = emptyList(),
+    val shiftType: ShiftType = ShiftType.FULL_DAY
+) {
+    fun toMap(): Map<String, Any> = mapOf(
+        "workingDays" to workingDays,
+        "shiftType" to shiftType.name
+    )
+
+    companion object {
+        fun fromMap(map: Map<String, Any?>): DoctorSchedule = DoctorSchedule(
+            workingDays = (map["workingDays"] as? List<*>)?.mapNotNull { (it as? Number)?.toInt() } ?: emptyList(),
+            shiftType = try {
+                ShiftType.valueOf(map["shiftType"] as? String ?: "FULL_DAY")
+            } catch (e: Exception) {
+                ShiftType.FULL_DAY
+            }
         )
     }
 }
