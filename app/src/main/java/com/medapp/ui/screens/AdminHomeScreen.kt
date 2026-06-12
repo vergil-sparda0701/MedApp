@@ -43,7 +43,7 @@ fun AdminHomeScreen(
     onLogout: () -> Unit
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabs = listOf("Usuarios", "Citas", "Historial")
+    val tabs = listOf("Usuarios", "Citas", "Historial", "Especialidades")
 
     Scaffold(
         topBar = {
@@ -61,10 +61,11 @@ fun AdminHomeScreen(
                         }
                     }
                 )
-                TabRow(
+                ScrollableTabRow(
                     selectedTabIndex = selectedTabIndex,
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    edgePadding = 0.dp
                 ) {
                     tabs.forEachIndexed { index, title ->
                         Tab(
@@ -82,6 +83,7 @@ fun AdminHomeScreen(
                 0 -> AdminUsersTab(adminViewModel)
                 1 -> AdminAppointmentsTab(adminViewModel)
                 2 -> AdminHistoryTab(adminViewModel)
+                3 -> AdminSpecialtiesTab(adminViewModel)
             }
         }
     }
@@ -259,10 +261,12 @@ fun EditUserDialog(user: User, adminViewModel: AdminViewModel, onDismiss: () -> 
     var email by remember { mutableStateOf(user.email) }
     var specialty by remember { mutableStateOf(user.specialty) }
 
-    // Inicializa con el rol y doctor asignado real del usuario
     val userRole = user.role
     val selectedDoctorIds = remember { mutableStateListOf(*user.assignedDoctorIds.toTypedArray()) }
     var doctorsDropdownExpanded by remember { mutableStateOf(false) }
+
+    val specialtiesState by adminViewModel.specialtiesState.collectAsState()
+    var specialtyDropdownExpanded by remember { mutableStateOf(false) }
 
     // Estado para el envío de correo de restablecimiento de contraseña
     var passwordResetMessage by remember { mutableStateOf<String?>(null) }
@@ -369,13 +373,49 @@ fun EditUserDialog(user: User, adminViewModel: AdminViewModel, onDismiss: () -> 
 
                 // Especialidad — solo para doctores
                 if (userRole == UserRole.DOCTOR) {
-                    OutlinedTextField(
-                        value = specialty,
-                        onValueChange = { specialty = it },
-                        label = { Text("Especialidad") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
+                    when (val state = specialtiesState) {
+                        is com.medapp.viewmodel.SpecialtiesState.Loading -> {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                        is com.medapp.viewmodel.SpecialtiesState.Success -> {
+                            ExposedDropdownMenuBox(
+                                expanded = specialtyDropdownExpanded,
+                                onExpandedChange = { specialtyDropdownExpanded = it }
+                            ) {
+                                OutlinedTextField(
+                                    value = specialty.ifBlank { "Seleccione una especialidad" },
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Especialidad") },
+                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = specialtyDropdownExpanded) }
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = specialtyDropdownExpanded,
+                                    onDismissRequest = { specialtyDropdownExpanded = false }
+                                ) {
+                                    state.specialties.forEach { spec ->
+                                        DropdownMenuItem(
+                                            text = { Text(spec.name) },
+                                            onClick = {
+                                                specialty = spec.name
+                                                specialtyDropdownExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        else -> {
+                            OutlinedTextField(
+                                value = specialty,
+                                onValueChange = { specialty = it },
+                                label = { Text("Especialidad") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                        }
+                    }
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -478,6 +518,9 @@ fun CreateUserDialog(adminViewModel: AdminViewModel, onDismiss: () -> Unit) {
     val selectedDoctorIds = remember { mutableStateListOf<String>() }
     var doctorsDropdownExpanded by remember { mutableStateOf(false) }
     
+    val specialtiesState by adminViewModel.specialtiesState.collectAsState()
+    var specialtyDropdownExpanded by remember { mutableStateOf(false) }
+
     var passwordVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(adminState) {
@@ -547,12 +590,56 @@ fun CreateUserDialog(adminViewModel: AdminViewModel, onDismiss: () -> Unit) {
                 )
 
                 if (selectedRole == UserRole.DOCTOR) {
-                    OutlinedTextField(
-                        value = specialty,
-                        onValueChange = { specialty = it },
-                        label = { Text("Especialidad") },
-                        singleLine = true
-                    )
+                    when (val state = specialtiesState) {
+                        is com.medapp.viewmodel.SpecialtiesState.Loading -> {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                        is com.medapp.viewmodel.SpecialtiesState.Success -> {
+                            if (state.specialties.isEmpty()) {
+                                Text(
+                                    "Debe crear al menos una especialidad antes de registrar doctores.",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            } else {
+                                ExposedDropdownMenuBox(
+                                    expanded = specialtyDropdownExpanded,
+                                    onExpandedChange = { specialtyDropdownExpanded = it }
+                                ) {
+                                    OutlinedTextField(
+                                        value = specialty.ifBlank { "Seleccione una especialidad" },
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Especialidad") },
+                                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = specialtyDropdownExpanded) }
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = specialtyDropdownExpanded,
+                                        onDismissRequest = { specialtyDropdownExpanded = false }
+                                    ) {
+                                        state.specialties.forEach { spec ->
+                                            DropdownMenuItem(
+                                                text = { Text(spec.name) },
+                                                onClick = {
+                                                    specialty = spec.name
+                                                    specialtyDropdownExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else -> {
+                            OutlinedTextField(
+                                value = specialty,
+                                onValueChange = { specialty = it },
+                                label = { Text("Especialidad") },
+                                singleLine = true
+                            )
+                        }
+                    }
                 }
 
                 if (selectedRole == UserRole.RECEPTIONIST) {
@@ -644,6 +731,235 @@ fun CreateUserDialog(adminViewModel: AdminViewModel, onDismiss: () -> Unit) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                 } else {
                     Text("Crear")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+// ─── Admin Specialties Tab ───────────────────────────────────────────────────
+
+@Composable
+fun AdminSpecialtiesTab(adminViewModel: AdminViewModel) {
+    val specialtiesState by adminViewModel.specialtiesState.collectAsState()
+    val opState by adminViewModel.specialtyOpState.collectAsState()
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var specialtyToEdit by remember { mutableStateOf<com.medapp.model.Specialty?>(null) }
+    var specialtyToDelete by remember { mutableStateOf<com.medapp.model.Specialty?>(null) }
+
+    // Handle operation messages
+    LaunchedEffect(opState) {
+        when (opState) {
+            is com.medapp.viewmodel.SpecialtyOperationState.Success -> {
+                adminViewModel.resetSpecialtyOpState()
+            }
+            is com.medapp.viewmodel.SpecialtyOperationState.Error -> {
+                // We'll show the error inside the dialogs if needed, or rely on a snackbar
+            }
+            else -> {}
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (val state = specialtiesState) {
+            is com.medapp.viewmodel.SpecialtiesState.Loading -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
+            is com.medapp.viewmodel.SpecialtiesState.Error -> {
+                Text("Error: ${state.error}", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
+            }
+            is com.medapp.viewmodel.SpecialtiesState.Success -> {
+                if (state.specialties.isEmpty()) {
+                    Text("No hay especialidades registradas.", modifier = Modifier.align(Alignment.Center).padding(16.dp))
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(state.specialties) { specialty ->
+                            SpecialtyCard(
+                                specialty = specialty,
+                                onEdit = { specialtyToEdit = specialty },
+                                onDelete = { specialtyToDelete = specialty }
+                            )
+                        }
+                        item { Spacer(modifier = Modifier.height(80.dp)) }
+                    }
+                }
+            }
+        }
+
+        FloatingActionButton(
+            onClick = { showCreateDialog = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            containerColor = MaterialTheme.colorScheme.primary
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Crear Especialidad")
+        }
+    }
+
+    if (showCreateDialog) {
+        SpecialtyDialog(
+            title = "Nueva Especialidad",
+            initialName = "",
+            opState = opState,
+            onDismiss = { 
+                showCreateDialog = false
+                adminViewModel.resetSpecialtyOpState()
+            },
+            onConfirm = { name -> adminViewModel.addSpecialty(name) }
+        )
+    }
+
+    specialtyToEdit?.let { specialty ->
+        SpecialtyDialog(
+            title = "Editar Especialidad",
+            initialName = specialty.name,
+            opState = opState,
+            onDismiss = { 
+                specialtyToEdit = null
+                adminViewModel.resetSpecialtyOpState()
+            },
+            onConfirm = { name -> 
+                adminViewModel.updateSpecialty(specialty.id, name, specialty.name) 
+                specialtyToEdit = null
+            }
+        )
+    }
+
+    specialtyToDelete?.let { specialty ->
+        AlertDialog(
+            onDismissRequest = { 
+                specialtyToDelete = null
+                adminViewModel.resetSpecialtyOpState()
+            },
+            title = { Text("Eliminar Especialidad") },
+            text = { 
+                Column {
+                    Text("¿Estás seguro de que deseas eliminar '${specialty.name}'?")
+                    if (opState is com.medapp.viewmodel.SpecialtyOperationState.Error) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = (opState as com.medapp.viewmodel.SpecialtyOperationState.Error).error,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { adminViewModel.deleteSpecialty(specialty.id, specialty.name) },
+                    enabled = opState !is com.medapp.viewmodel.SpecialtyOperationState.Loading,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    if (opState is com.medapp.viewmodel.SpecialtyOperationState.Loading) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onError)
+                    } else {
+                        Text("Eliminar")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    specialtyToDelete = null
+                    adminViewModel.resetSpecialtyOpState()
+                }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+        // Auto-dismiss on success
+        if (opState is com.medapp.viewmodel.SpecialtyOperationState.Success) {
+            specialtyToDelete = null
+            adminViewModel.resetSpecialtyOpState()
+        }
+    }
+}
+
+@Composable
+fun SpecialtyCard(
+    specialty: com.medapp.model.Specialty,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(text = specialty.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SpecialtyDialog(
+    title: String,
+    initialName: String,
+    opState: com.medapp.viewmodel.SpecialtyOperationState,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var name by remember { mutableStateOf(initialName) }
+
+    // Auto-dismiss on success
+    LaunchedEffect(opState) {
+        if (opState is com.medapp.viewmodel.SpecialtyOperationState.Success) {
+            onDismiss()
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nombre de la especialidad") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (opState is com.medapp.viewmodel.SpecialtyOperationState.Error) {
+                    Text(
+                        text = (opState as com.medapp.viewmodel.SpecialtyOperationState.Error).error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(name.trim()) },
+                enabled = name.isNotBlank() && opState !is com.medapp.viewmodel.SpecialtyOperationState.Loading
+            ) {
+                if (opState is com.medapp.viewmodel.SpecialtyOperationState.Loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Text("Guardar")
                 }
             }
         },

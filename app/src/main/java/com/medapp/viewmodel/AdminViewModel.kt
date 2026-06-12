@@ -11,14 +11,30 @@ import com.medapp.model.UserRole
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.medapp.model.Specialty
+import com.medapp.repository.SpecialtyRepository
 
 sealed class AdminState {
     object Idle : AdminState()
     object Loading : AdminState()
     data class Success(val message: String) : AdminState()
     data class Error(val error: String) : AdminState()
+}
+
+sealed class SpecialtiesState {
+    object Loading : SpecialtiesState()
+    data class Success(val specialties: List<Specialty>) : SpecialtiesState()
+    data class Error(val error: String) : SpecialtiesState()
+}
+
+sealed class SpecialtyOperationState {
+    object Idle : SpecialtyOperationState()
+    object Loading : SpecialtyOperationState()
+    data class Success(val message: String) : SpecialtyOperationState()
+    data class Error(val error: String) : SpecialtyOperationState()
 }
 
 class AdminViewModel : ViewModel() {
@@ -39,10 +55,19 @@ class AdminViewModel : ViewModel() {
     private val _allAppointments = MutableStateFlow<List<com.medapp.model.Appointment>>(emptyList())
     val allAppointments: StateFlow<List<com.medapp.model.Appointment>> = _allAppointments.asStateFlow()
 
+    // Especialidades
+    private val specialtyRepository = SpecialtyRepository()
+    private val _specialtiesState = MutableStateFlow<SpecialtiesState>(SpecialtiesState.Loading)
+    val specialtiesState: StateFlow<SpecialtiesState> = _specialtiesState.asStateFlow()
+
+    private val _specialtyOpState = MutableStateFlow<SpecialtyOperationState>(SpecialtyOperationState.Idle)
+    val specialtyOpState: StateFlow<SpecialtyOperationState> = _specialtyOpState.asStateFlow()
+
     init {
         loadDoctors()
         loadAllUsers()
         loadAllAppointments()
+        loadSpecialties()
     }
 
     private fun loadAllAppointments() {
@@ -191,5 +216,73 @@ class AdminViewModel : ViewModel() {
 
     fun resetState() {
         _adminState.value = AdminState.Idle
+    }
+
+    // ─── Specialties Management ────────────────────────────────────────────────
+    
+    private fun loadSpecialties() {
+        viewModelScope.launch {
+            try {
+                specialtyRepository.getSpecialtiesFlow()
+                    .catch { e -> 
+                        _specialtiesState.value = SpecialtiesState.Error(e.message ?: "Error al cargar especialidades") 
+                    }
+                    .collect { result ->
+                        _specialtiesState.value = SpecialtiesState.Success(result)
+                    }
+            } catch (e: Exception) {
+                _specialtiesState.value = SpecialtiesState.Error(e.message ?: "Error al cargar especialidades")
+            }
+        }
+    }
+
+    fun addSpecialty(name: String) {
+        viewModelScope.launch {
+            _specialtyOpState.value = SpecialtyOperationState.Loading
+            specialtyRepository.addSpecialty(name).fold(
+                onSuccess = {
+                    _specialtyOpState.value = SpecialtyOperationState.Success("Especialidad creada exitosamente")
+                },
+                onFailure = { error ->
+                    _specialtyOpState.value = SpecialtyOperationState.Error(error.message ?: "Error al crear especialidad")
+                }
+            )
+        }
+    }
+
+    fun updateSpecialty(id: String, name: String, oldName: String) {
+        viewModelScope.launch {
+            _specialtyOpState.value = SpecialtyOperationState.Loading
+            specialtyRepository.updateSpecialty(id, name, oldName).fold(
+                onSuccess = {
+                    _specialtyOpState.value = SpecialtyOperationState.Success("Especialidad actualizada exitosamente")
+                    // If we updated doctor specialties, we should refresh the doctor list
+                    if (oldName != name) {
+                        loadDoctors()
+                    }
+                },
+                onFailure = { error ->
+                    _specialtyOpState.value = SpecialtyOperationState.Error(error.message ?: "Error al actualizar especialidad")
+                }
+            )
+        }
+    }
+
+    fun deleteSpecialty(id: String, name: String) {
+        viewModelScope.launch {
+            _specialtyOpState.value = SpecialtyOperationState.Loading
+            specialtyRepository.deleteSpecialty(id, name).fold(
+                onSuccess = {
+                    _specialtyOpState.value = SpecialtyOperationState.Success("Especialidad eliminada exitosamente")
+                },
+                onFailure = { error ->
+                    _specialtyOpState.value = SpecialtyOperationState.Error(error.message ?: "Error al eliminar especialidad")
+                }
+            )
+        }
+    }
+
+    fun resetSpecialtyOpState() {
+        _specialtyOpState.value = SpecialtyOperationState.Idle
     }
 }

@@ -177,3 +177,24 @@ data class AppNotification(
         )
     }
 }
+
+// ─── Specialty Model ──────────────────────────────────────────────────────────
+data class Specialty(
+    val id: String = "",
+    val name: String = "",
+    val createdAt: Timestamp = Timestamp.now()
+) {
+    fun toMap(): Map<String, Any> = mapOf(
+        "id" to id,
+        "name" to name,
+        "createdAt" to createdAt
+    )
+
+    companion object {
+        fun fromMap(map: Map<String, Any?>, id: String = ""): Specialty = Specialty(
+            id = id.ifEmpty { map["id"] as? String ?: "" },
+            name = map["name"] as? String ?: "",
+            createdAt = map["createdAt"] as? Timestamp ?: Timestamp.now()
+        )
+    }
+}
