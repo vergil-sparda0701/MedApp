@@ -68,14 +68,14 @@ fun MedTopBar(
         actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MedBlue,
-            titleContentColor = Color.White,
-            navigationIconContentColor = Color.White,
-            actionIconContentColor = Color.White
+            titleContentColor = MaterialTheme.colorScheme.onPrimary,
+            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+            actionIconContentColor = MaterialTheme.colorScheme.onPrimary
         )
     )
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
+// ───Card de estadisticas ────────────────────────────────────────────────────────────────
 @Composable
 fun StatCard(
     label: String,
@@ -101,7 +101,7 @@ fun StatCard(
     }
 }
 
-// ─── Date Formatter Helper ────────────────────────────────────────────────────
+// ─── formateador de fecha ────────────────────────────────────────────────────
 fun formatTimestamp(timestamp: com.google.firebase.Timestamp): String {
     val date = timestamp.toDate()
     val formatter = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())

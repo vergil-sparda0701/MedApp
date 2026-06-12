@@ -51,11 +51,7 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(MedBlueDark, MedBlue, Color(0xFF42A5F5))
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
@@ -67,29 +63,29 @@ fun LoginScreen(
         ) {
             // Logo / Header
             Icon(
-                imageVector = Icons.Default.LocalHospital,
+                Icons.Default.MedicalServices,
                 contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(80.dp)
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.height(16.dp))
             Text(
                 "MedApp",
-                fontSize = 36.sp,
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.primary
             )
             Text(
-                "Gestión de Citas Médicas",
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.8f)
+                "Tu salud en buenas manos",
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                fontSize = 16.sp
             )
             Spacer(Modifier.height(40.dp))
 
             // Card
             Card(
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -156,12 +152,15 @@ fun LoginScreen(
                             .height(52.dp),
                         shape = RoundedCornerShape(12.dp),
                         enabled = email.isNotBlank() && password.isNotBlank() && authState !is AuthState.Loading,
-                        colors = ButtonDefaults.buttonColors(containerColor = MedBlue)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
                         if (authState is AuthState.Loading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(22.dp),
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onPrimary,
                                 strokeWidth = 2.5.dp
                             )
                         } else {

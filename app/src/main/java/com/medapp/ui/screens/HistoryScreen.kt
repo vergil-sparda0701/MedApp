@@ -34,7 +34,7 @@ fun HistoryScreen(
     val authState by authViewModel.authState.collectAsState()
     val user = (authState as? AuthState.Authenticated)?.user ?: return
 
-    // Guard: doctor only
+    // Guard: solo doctores
     if (user.role != UserRole.DOCTOR) {
         LaunchedEffect(Unit) { onNavigateBack() }
         return
@@ -43,7 +43,7 @@ fun HistoryScreen(
     val historyAppointments by appointmentViewModel.historyAppointments.collectAsState()
     val isLoadingHistory by appointmentViewModel.isLoadingHistory.collectAsState()
 
-    // Filter state
+    // Filtros
     var sortNewest by remember { mutableStateOf(true) }
     var startDateMillis by remember { mutableStateOf<Long?>(null) }
     var endDateMillis by remember { mutableStateOf<Long?>(null) }
@@ -120,18 +120,18 @@ fun HistoryScreen(
                 .background(MedSurface)
                 .padding(padding)
         ) {
-            // Filters panel
+            // panel de filtros
             if (showFilters) {
                 Card(
                     shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("Filtros", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MedBlueDark)
 
-                        // Date range
+                        // rango de fechas
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -162,7 +162,7 @@ fun HistoryScreen(
                             }
                         }
 
-                        // Sort
+                        // ordenar
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("Ordenar: ", fontSize = 13.sp, color = Color.Gray)
                             FilterChip(
@@ -180,7 +180,7 @@ fun HistoryScreen(
                             )
                         }
 
-                        // Status filter
+                        // filtros de estado
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -199,7 +199,7 @@ fun HistoryScreen(
                             }
                         }
 
-                        // Clear filters
+                        // limpiar filtros
                         if (startDateMillis != null || endDateMillis != null) {
                             TextButton(
                                 onClick = {
@@ -218,7 +218,7 @@ fun HistoryScreen(
                 }
             }
 
-            // Results count
+            // conteo de resultados
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -253,7 +253,7 @@ fun HistoryScreen(
                     items(filteredAppointments) { appointment ->
                         Card(
                             shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {

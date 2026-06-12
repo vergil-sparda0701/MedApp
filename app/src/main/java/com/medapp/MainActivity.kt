@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
-        // No specific action needed, if granted the workers will start showing notifications
+        // No se requiere ninguna acción específica; si se concede, los workers comenzarán a mostrar notificaciones.
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,18 +29,18 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Request notification permission for Android 13+
+        // pide el permiso para enviar notificaciones desde Android 13+ en adelante
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
 
-        // Create notification channel
+        // crea el canal de notificaciones
         NotificationHelper.createNotificationChannel(this)
 
-        // Schedule periodic reminder check (24h before appointment)
+        // Programa la comprobación de recordatorio periódica (24h horas antes de la cita)
         NotificationHelper.scheduleReminderCheck(this)
 
-        // Schedule periodic status-change check (notifies patient on confirm/cancel/complete)
+        // Programaa la comprobación periódica del estado (notifica al paciente si confirma/cancela/completa la cita).
         NotificationHelper.scheduleStatusChangeCheck(this)
 
         setContent {

@@ -3,7 +3,7 @@ package com.medapp.model
 import com.google.firebase.Timestamp
 
 // crear roles de usuarios
-enum class UserRole { PATIENT, DOCTOR }
+enum class UserRole { PATIENT, DOCTOR, ADMIN, RECEPTIONIST }
 
 // crea el modelo de usuario
 data class User(
@@ -12,7 +12,8 @@ data class User(
     val email: String = "",
     val phone: String = "",
     val role: UserRole = UserRole.PATIENT,
-    val specialty: String = "",       // for doctors
+    val specialty: String = "",       // para doctores
+    val assignedDoctorIds: List<String> = emptyList(),// para recepcionistas
     val fcmToken: String = "",
     val createdAt: Timestamp = Timestamp.now()
 ) {
@@ -24,6 +25,7 @@ data class User(
         "phone" to phone,
         "role" to role.name,
         "specialty" to specialty,
+        "assignedDoctorIds" to assignedDoctorIds,
         "fcmToken" to fcmToken,
         "createdAt" to createdAt
     )
@@ -37,6 +39,7 @@ data class User(
             phone = map["phone"] as? String ?: "",
             role = UserRole.valueOf(map["role"] as? String ?: "PATIENT"),
             specialty = map["specialty"] as? String ?: "",
+            assignedDoctorIds = (map["assignedDoctorIds"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
             fcmToken = map["fcmToken"] as? String ?: "",
             createdAt = map["createdAt"] as? Timestamp ?: Timestamp.now()
         )
@@ -65,9 +68,11 @@ data class Appointment(
     val patientId: String = "",
     val patientName: String = "",
     val patientEmail: String = "",
+    val patientPhone: String = "",
     val doctorId: String = "",
     val doctorName: String = "",
     val doctorSpecialty: String = "",
+    val doctorPhone: String = "",
     val dateTime: Timestamp = Timestamp.now(),
     val reason: String = "",
     val notes: String = "",
@@ -85,9 +90,11 @@ data class Appointment(
         "patientId" to patientId,
         "patientName" to patientName,
         "patientEmail" to patientEmail,
+        "patientPhone" to patientPhone,
         "doctorId" to doctorId,
         "doctorName" to doctorName,
         "doctorSpecialty" to doctorSpecialty,
+        "doctorPhone" to doctorPhone,
         "dateTime" to dateTime,
         "reason" to reason,
         "notes" to notes,
@@ -107,9 +114,11 @@ data class Appointment(
             patientId = map["patientId"] as? String ?: "",
             patientName = map["patientName"] as? String ?: "",
             patientEmail = map["patientEmail"] as? String ?: "",
+            patientPhone = map["patientPhone"] as? String ?: "",
             doctorId = map["doctorId"] as? String ?: "",
             doctorName = map["doctorName"] as? String ?: "",
             doctorSpecialty = map["doctorSpecialty"] as? String ?: "",
+            doctorPhone = map["doctorPhone"] as? String ?: "",
             dateTime = map["dateTime"] as? Timestamp ?: Timestamp.now(),
             reason = map["reason"] as? String ?: "",
             notes = map["notes"] as? String ?: "",
@@ -135,3 +144,36 @@ data class AppointmentStats(
     val completionRate: Float = 0f,
     val cancellationRate: Float = 0f
 )
+
+// ─── Notification Model ───────────────────────────────────────────────────────
+data class AppNotification(
+    val id: String = "",
+    val userId: String = "",
+    val title: String = "",
+    val message: String = "",
+    val timestamp: Timestamp = Timestamp.now(),
+    val isRead: Boolean = false,
+    val relatedId: String = "" // Optional ID (e.g. appointmentId)
+) {
+    fun toMap(): Map<String, Any> = mapOf(
+        "id" to id,
+        "userId" to userId,
+        "title" to title,
+        "message" to message,
+        "timestamp" to timestamp,
+        "isRead" to isRead,
+        "relatedId" to relatedId
+    )
+
+    companion object {
+        fun fromMap(map: Map<String, Any?>, id: String = ""): AppNotification = AppNotification(
+            id = id.ifEmpty { map["id"] as? String ?: "" },
+            userId = map["userId"] as? String ?: "",
+            title = map["title"] as? String ?: "",
+            message = map["message"] as? String ?: "",
+            timestamp = map["timestamp"] as? Timestamp ?: Timestamp.now(),
+            isRead = map["isRead"] as? Boolean ?: false,
+            relatedId = map["relatedId"] as? String ?: ""
+        )
+    }
+}

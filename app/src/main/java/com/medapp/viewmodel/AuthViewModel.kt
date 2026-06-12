@@ -72,10 +72,10 @@ class AuthViewModel(
     }
 
     fun register(email: String, password: String, name: String, phone: String,
-                 role: UserRole, specialty: String = "") {
+                 role: UserRole, specialty: String = "", assignedDoctorIds: List<String> = emptyList()) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
-            repository.register(email, password, name, phone, role, specialty).fold(
+            repository.register(email, password, name, phone, role, specialty, assignedDoctorIds).fold(
                 onSuccess = { user ->
                     _currentUserProfile.value = user
                     _authState.value = AuthState.Authenticated(user)

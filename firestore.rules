@@ -2,33 +2,55 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Users collection ──────────────────────────────────────────────────────
+    function isAdmin() {
+      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return role == 'ADMIN' || role == 'Admin' || role == 'admin';
+    }
+
+    function isReceptionistFor(doctorId) {
+      let user = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return user.role == 'RECEPTIONIST' && doctorId in user.assignedDoctorIds;
+    }
+
+    // ── tabla o coleccion de usuarios ──────────────────────────────────────────────────────
     match /users/{userId} {
       // Any authenticated user can read user profiles (needed to list doctors)
       allow read: if request.auth != null;
-      // Users can only write their own profile
-      allow write: if request.auth != null && request.auth.uid == userId;
+      // Users can write their own profile, or admins can write to any user
+      allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
     }
 
-    // ── Appointments collection ───────────────────────────────────────────────
+    // ── tabla o coleccion de citas ───────────────────────────────────────────────
     match /appointments/{appointmentId} {
-      // Patient or Doctor involved can read the appointment
-      allow read: if request.auth != null &&
-        (resource.data.patientId == request.auth.uid ||
-         resource.data.doctorId == request.auth.uid);
+      // permite que cualquier usuario pueda leer las citas
+      allow read: if request.auth != null;
 
-      // Patients can create appointments (they are the patient)
+      // los pacientes pueden crear sus citas.
       allow create: if request.auth != null &&
-        request.resource.data.patientId == request.auth.uid;
+        (request.resource.data.patientId == request.auth.uid || 
+         isReceptionistFor(request.resource.data.doctorId) || 
+         isAdmin());
 
-      // Both patient and doctor can update (status changes, notes)
+      // ambos pacientes y doctores pueden cambiar el estado de la cita. los recepcionistas pueden actualizar la cita por su doctor.
       allow update: if request.auth != null &&
         (resource.data.patientId == request.auth.uid ||
-         resource.data.doctorId == request.auth.uid);
+         resource.data.doctorId == request.auth.uid ||
+         isReceptionistFor(resource.data.doctorId) || 
+         isAdmin());
 
-      // Only the patient who created can delete (not needed in this app)
+      // solo los pacientes, recepcionistas o administradores pueden eliminar
       allow delete: if request.auth != null &&
-        resource.data.patientId == request.auth.uid;
+        (resource.data.patientId == request.auth.uid || 
+         isReceptionistFor(resource.data.doctorId) || 
+         isAdmin());
+    }
+    
+    // ── tabla o coleccion de notificaciones ──────────────────────────────────────────────
+    match /notifications/{notificationId} {
+      // los usuarios pueden leer sus propias notificaciones, los admins pueden leerlas todas
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
+      // permite a los usuarios autenticados crear las notificaciones
+      allow write: if request.auth != null;
     }
   }
 }

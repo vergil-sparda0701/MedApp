@@ -111,7 +111,7 @@ object NotificationHelper {
         )
     }
 
-    // ─── Trigger an immediate reminder check (one-time) ────────────────────────
+    // ─── Activar una comprobación de recordatorio inmediata (se activa una vez) ────────────────────────
     fun triggerImmediateReminderCheck(context: Context) {
         val workRequest = OneTimeWorkRequestBuilder<ReminderWorker>()
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
@@ -130,7 +130,9 @@ object NotificationHelper {
         doctorName: String = "",
         appointmentDate: Long = 0,
         reason: String = "",
-        reminderType: String = ""
+        reminderType: String = "",
+        patientId: String = "",
+        appointmentId: String = ""
     ) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, AppointmentReminderReceiver::class.java).apply {
@@ -143,6 +145,8 @@ object NotificationHelper {
             putExtra("appointmentDate", appointmentDate)
             putExtra("reason", reason)
             putExtra("reminderType", reminderType)
+            putExtra("patientId", patientId)
+            putExtra("appointmentId", appointmentId)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
@@ -192,44 +196,45 @@ object NotificationHelper {
         val doctorName = appointment.doctorName
         val reason = appointment.reason
         val appId = appointment.id
+        val patientId = appointment.patientId
 
-        // 3 Hours (180 min)
+        // 3 horas (180 min)
         val time3h = appointmentTime - (180 * 60 * 1000)
         if (time3h > now) {
             scheduleExactAlarm(
                 context, time3h, "Recordatorio de Cita 🏥",
                 "Tu cita con Dr. $doctorName es en unas horas.", (appId + "3h").hashCode(),
-                patientEmail, patientName, doctorName, appointmentTime, reason, "HOURS"
+                patientEmail, patientName, doctorName, appointmentTime, reason, "HOURS", patientId, appId
             )
         }
 
-        // 1 Day (24h)
+        // 1 dia (24h)
         val time1d = appointmentTime - (24 * 60 * 60 * 1000)
         if (time1d > now) {
             scheduleExactAlarm(
                 context, time1d, "Recordatorio de Cita 🏥",
                 "Recuerda tu cita de mañana con Dr. $doctorName.", (appId + "1d").hashCode(),
-                patientEmail, patientName, doctorName, appointmentTime, reason, "ONE_DAY"
+                patientEmail, patientName, doctorName, appointmentTime, reason, "ONE_DAY", patientId, appId
             )
         }
 
-        // 2 Days (48h)
+        // 2 dias (48h)
         val time2d = appointmentTime - (2 * 24 * 60 * 60 * 1000L)
         if (time2d > now) {
             scheduleExactAlarm(
                 context, time2d, "Recordatorio de Cita 🏥",
                 "Tienes una cita programada en 2 días con Dr. $doctorName.", (appId + "2d").hashCode(),
-                patientEmail, patientName, doctorName, appointmentTime, reason, "TWO_DAYS"
+                patientEmail, patientName, doctorName, appointmentTime, reason, "TWO_DAYS", patientId, appId
             )
         }
 
-        // 3 Days (72h)
+        // 3 dias (72h)
         val time3d = appointmentTime - (3 * 24 * 60 * 60 * 1000L)
         if (time3d > now) {
             scheduleExactAlarm(
                 context, time3d, "Recordatorio de Cita 🏥",
                 "Tienes una cita programada en 3 días con Dr. $doctorName.", (appId + "3d").hashCode(),
-                patientEmail, patientName, doctorName, appointmentTime, reason, "THREE_DAYS"
+                patientEmail, patientName, doctorName, appointmentTime, reason, "THREE_DAYS", patientId, appId
             )
         }
     }
@@ -290,13 +295,28 @@ class ReminderWorker(
         reminderType: ReminderType
     ) {
         // 1. Notificación push local
+        val title = "Recordatorio de Cita 🏥"
+        val body = "$bodyPrefix a las ${formatHour(appointment.dateTime.toDate())} con Dr. ${appointment.doctorName}. " +
+                "Motivo: ${appointment.reason}"
+                
         NotificationHelper.showAppointmentReminder(
             context,
-            title = "Recordatorio de Cita 🏥",
-            body = "$bodyPrefix a las ${formatHour(appointment.dateTime.toDate())} con Dr. ${appointment.doctorName}. " +
-                    "Motivo: ${appointment.reason}",
+            title = title,
+            body = body,
             notificationId = (appointment.id + flagField).hashCode()
         )
+        // 1b. Guardar en Panel de Notificaciones
+        withContext(Dispatchers.IO) {
+            val notificationRepo = com.medapp.repository.NotificationRepository()
+            notificationRepo.saveNotification(
+                com.medapp.model.AppNotification(
+                    userId = appointment.patientId,
+                    title = title,
+                    message = body,
+                    relatedId = appointment.id
+                )
+            )
+        }
         // 2. Email via Resend: usar patientEmail del documento; fallback a Firestore para citas antiguas
         val email = appointment.patientEmail.ifBlank {
             appointmentRepo.getPatientEmail(appointment.patientId) ?: ""
@@ -358,6 +378,21 @@ class StatusChangeWorker(
                         // ID único por cita + estado para no sobreescribir otras notificaciones
                         notificationId = (appointment.id + appointment.status.name).hashCode()
                     )
+                    
+                    // 1b. Guardar en Panel de Notificaciones (usando ID determinista)
+                    withContext(Dispatchers.IO) {
+                        val notificationRepo = com.medapp.repository.NotificationRepository()
+                        notificationRepo.saveNotification(
+                            com.medapp.model.AppNotification(
+                                id = "${appointment.id}_${appointment.status.name}",
+                                userId = appointment.patientId,
+                                title = title,
+                                message = body,
+                                relatedId = appointment.id
+                            )
+                        )
+                    }
+
                     // 2. Email via Resend: usar patientEmail del documento; fallback a Firestore para citas antiguas
                     val email = appointment.patientEmail.ifBlank {
                         appointmentRepo.getPatientEmail(appointment.patientId) ?: ""
@@ -392,12 +427,12 @@ class StatusChangeWorker(
     }
 }
 
-// ─── FCM Service ──────────────────────────────────────────────────────────────
+// ─── servicio FCM ──────────────────────────────────────────────────────────────
 class MedFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        // Save token to Firestore for the current user
+        // guardar el token en firestore para el usuario actual
         val authRepo = AuthRepository()
         authRepo.currentUser?.let { user ->
             CoroutineScope(Dispatchers.IO).launch {

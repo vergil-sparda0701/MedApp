@@ -14,6 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,25 +27,31 @@ import com.medapp.ui.theme.*
 import com.medapp.viewmodel.AppointmentViewModel
 import com.medapp.viewmodel.AuthState
 import com.medapp.viewmodel.AuthViewModel
+import com.medapp.viewmodel.NotificationViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DoctorHomeScreen(
     authViewModel: AuthViewModel,
     appointmentViewModel: AppointmentViewModel,
+    notificationViewModel: NotificationViewModel,
     onViewPending: () -> Unit,
     onViewStats: () -> Unit,
     onViewHistory: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
     onLogout: () -> Unit
 ) {
     val authState by authViewModel.authState.collectAsState()
     val user = (authState as? AuthState.Authenticated)?.user ?: return
     val appointments by appointmentViewModel.appointments.collectAsState()
     val stats by appointmentViewModel.stats.collectAsState()
+    val notifications by notificationViewModel.notifications.collectAsState()
+    val unreadCount = notifications.count { !it.isRead }
 
     LaunchedEffect(user.uid) {
         appointmentViewModel.loadAppointments(user.uid, true)
         appointmentViewModel.loadStats(user.uid, true)
+        notificationViewModel.loadNotifications(user.uid)
     }
 
     val todayAppointments = appointments.filter { appointment ->
@@ -50,7 +60,8 @@ fun DoctorHomeScreen(
             time = appointment.dateTime.toDate()
         }
         today.get(java.util.Calendar.DAY_OF_YEAR) == apptCal.get(java.util.Calendar.DAY_OF_YEAR) &&
-                today.get(java.util.Calendar.YEAR) == apptCal.get(java.util.Calendar.YEAR)
+                today.get(java.util.Calendar.YEAR) == apptCal.get(java.util.Calendar.YEAR) &&
+                appointment.status != AppointmentStatus.CANCELLED
     }
 
     // Citas confirmadas pendientes de completar o cancelar
@@ -64,18 +75,33 @@ fun DoctorHomeScreen(
                 title = {
                     Column {
                         Text("Dr. ${user.name.split(" ").first()}", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text(user.specialty, fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
+                        Text(user.specialty, fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToNotifications) {
+                        if (unreadCount > 0) {
+                            BadgedBox(
+                                badge = {
+                                    Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) {
+                                        Text(if (unreadCount > 99) "99+" else unreadCount.toString())
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.Notifications, contentDescription = "Notificaciones")
+                            }
+                        } else {
+                            Icon(Icons.Default.Notifications, contentDescription = "Notificaciones")
+                        }
+                    }
                     IconButton(onClick = onLogout) {
                         Icon(Icons.Default.Logout, contentDescription = "Cerrar sesión")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MedBlueDark,
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         }
@@ -83,12 +109,12 @@ fun DoctorHomeScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MedSurface)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(padding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Summary stats row
+            // columna de resumen de estadisticas
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -118,9 +144,9 @@ fun DoctorHomeScreen(
                 }
             }
 
-            // Navigation cards
+            // cards de navegacion
             item {
-                Text("Panel de Control", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MedBlueDark)
+                Text("Panel de Control", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.height(8.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     DoctorNavCard(
@@ -158,7 +184,7 @@ fun DoctorHomeScreen(
                         "Citas Confirmadas",
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = MedBlueDark
+                        color = MaterialTheme.colorScheme.primary
                     )
                     if (confirmedAppointments.isNotEmpty()) {
                         Surface(
@@ -212,8 +238,8 @@ fun DoctorHomeScreen(
                 items(confirmedAppointments) { appointment ->
                     DoctorAppointmentCard(
                         appointment = appointment,
-                        onStatusChange = { newStatus ->
-                            appointmentViewModel.updateAppointmentStatus(appointment.id, newStatus, user.uid)
+                        onStatusChange = { newStatus, reason ->
+                            appointmentViewModel.updateAppointmentStatus(appointment, newStatus, user.uid, reason)
                         }
                     )
                 }
@@ -225,7 +251,7 @@ fun DoctorHomeScreen(
                     "Citas de Hoy (${todayAppointments.size})",
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
-                    color = MedBlueDark
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -259,8 +285,8 @@ fun DoctorHomeScreen(
                 items(todayAppointments) { appointment ->
                     DoctorAppointmentCard(
                         appointment = appointment,
-                        onStatusChange = { newStatus ->
-                            appointmentViewModel.updateAppointmentStatus(appointment.id, newStatus, user.uid)
+                        onStatusChange = { newStatus, reason ->
+                            appointmentViewModel.updateAppointmentStatus(appointment, newStatus, user.uid, reason)
                         }
                     )
                 }
@@ -270,7 +296,7 @@ fun DoctorHomeScreen(
 }
 
 @Composable
-private fun DoctorNavCard(
+fun DoctorNavCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
@@ -280,7 +306,7 @@ private fun DoctorNavCard(
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -310,14 +336,16 @@ private fun DoctorNavCard(
 @Composable
 fun DoctorAppointmentCard(
     appointment: Appointment,
-    onStatusChange: ((AppointmentStatus) -> Unit)? = null,
+    onStatusChange: ((AppointmentStatus, String) -> Unit)? = null,
     showActions: Boolean = true
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var cancellationReason by remember { mutableStateOf("") }
 
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -346,7 +374,30 @@ fun DoctorAppointmentCard(
                         color = MedBlue
                     )
                 }
-                StatusChip(appointment.status)
+                Column(horizontalAlignment = Alignment.End) {
+                    StatusChip(appointment.status)
+                    if (appointment.patientPhone.isNotBlank()) {
+                        val context = LocalContext.current
+                        IconButton(
+                            onClick = {
+                                val phoneNum = appointment.patientPhone.replace("[^\\d+]".toRegex(), "")
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$phoneNum"))
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "WhatsApp no está instalado", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.padding(top = 4.dp).size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Chat, 
+                                contentDescription = "Contactar por WhatsApp",
+                                tint = Color(0xFF25D366) // WhatsApp green
+                            )
+                        }
+                    }
+                }
                 if (showActions && onStatusChange != null) {
                     Box {
                         IconButton(onClick = { showMenu = true }) {
@@ -360,7 +411,7 @@ fun DoctorAppointmentCard(
                                 DropdownMenuItem(
                                     text = { Text("Confirmar") },
                                     onClick = {
-                                        onStatusChange(AppointmentStatus.CONFIRMED)
+                                        onStatusChange(AppointmentStatus.CONFIRMED, "")
                                         showMenu = false
                                     },
                                     leadingIcon = {
@@ -372,7 +423,7 @@ fun DoctorAppointmentCard(
                                 DropdownMenuItem(
                                     text = { Text("Marcar completada") },
                                     onClick = {
-                                        onStatusChange(AppointmentStatus.COMPLETED)
+                                        onStatusChange(AppointmentStatus.COMPLETED, "")
                                         showMenu = false
                                     },
                                     leadingIcon = {
@@ -384,8 +435,9 @@ fun DoctorAppointmentCard(
                                 DropdownMenuItem(
                                     text = { Text("Cancelar") },
                                     onClick = {
-                                        onStatusChange(AppointmentStatus.CANCELLED)
                                         showMenu = false
+                                        cancellationReason = ""
+                                        showCancelDialog = true
                                     },
                                     leadingIcon = {
                                         Icon(Icons.Default.Cancel, null, tint = StatusCancelled)
@@ -394,6 +446,52 @@ fun DoctorAppointmentCard(
                             }
                         }
                     }
+                }
+
+                // Diálogo de motivo de cancelación
+                if (showCancelDialog && onStatusChange != null) {
+                    AlertDialog(
+                        onDismissRequest = { showCancelDialog = false },
+                        title = { Text("Cancelar cita", fontWeight = FontWeight.Bold) },
+                        text = {
+                            Column {
+                                Text(
+                                    "Por favor, indica el motivo de la cancelación. El paciente recibirá esta información.",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                                Spacer(Modifier.height(12.dp))
+                                OutlinedTextField(
+                                    value = cancellationReason,
+                                    onValueChange = { cancellationReason = it },
+                                    label = { Text("Motivo de cancelación") },
+                                    placeholder = { Text("Ej: Emergencia médica, reagendamiento...") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    minLines = 3,
+                                    maxLines = 5,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    onStatusChange(AppointmentStatus.CANCELLED, cancellationReason)
+                                    showCancelDialog = false
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = StatusCancelled
+                                )
+                            ) {
+                                Text("Confirmar cancelación")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showCancelDialog = false }) {
+                                Text("Volver")
+                            }
+                        }
+                    )
                 }
             }
 

@@ -26,8 +26,10 @@ import com.medapp.ui.theme.MedBlue
 import com.medapp.ui.theme.MedBlueDark
 import com.medapp.viewmodel.AuthState
 import com.medapp.viewmodel.AuthViewModel
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun RegisterScreen(
     authViewModel: AuthViewModel,
@@ -42,9 +44,9 @@ fun RegisterScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var selectedRole by remember { mutableStateOf(UserRole.PATIENT) }
-    var specialty by remember { mutableStateOf("") }
+
     var errorMessage by remember { mutableStateOf("") }
+
 
     LaunchedEffect(authState) {
         when (val state = authState) {
@@ -57,11 +59,7 @@ fun RegisterScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(MedBlueDark, MedBlue, Color(0xFF42A5F5))
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
@@ -72,26 +70,26 @@ fun RegisterScreen(
             Spacer(Modifier.height(24.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Default.ArrowBack, null, tint = Color.White)
+                    Icon(Icons.Default.ArrowBack, null, tint = MaterialTheme.colorScheme.onBackground)
                 }
                 Spacer(Modifier.width(8.dp))
                 Text(
                     "Crear Cuenta",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onBackground
                 )
             }
             Text(
                 "  Completa tus datos para registrarte",
-                color = Color.White.copy(alpha = 0.8f),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
                 fontSize = 14.sp
             )
             Spacer(Modifier.height(24.dp))
 
             Card(
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -99,30 +97,6 @@ fun RegisterScreen(
                     modifier = Modifier.padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // Role selector
-                    Text("Tipo de usuario", fontWeight = FontWeight.SemiBold, color = MedBlueDark)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        UserRole.values().forEach { role ->
-                            FilterChip(
-                                selected = selectedRole == role,
-                                onClick = { selectedRole = role },
-                                label = {
-                                    Text(if (role == UserRole.PATIENT) "Paciente" else "Doctor")
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        if (role == UserRole.PATIENT) Icons.Default.Person else Icons.Default.MedicalServices,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
 
                     OutlinedTextField(
                         value = name,
@@ -155,19 +129,6 @@ fun RegisterScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
-
-                    // Specialty field only for doctors
-                    if (selectedRole == UserRole.DOCTOR) {
-                        OutlinedTextField(
-                            value = specialty,
-                            onValueChange = { specialty = it },
-                            label = { Text("Especialidad médica") },
-                            leadingIcon = { Icon(Icons.Default.MedicalServices, null) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
 
                     OutlinedTextField(
                         value = password,
@@ -206,6 +167,8 @@ fun RegisterScreen(
                         shape = RoundedCornerShape(12.dp)
                     )
 
+
+
                     if (errorMessage.isNotEmpty()) {
                         Card(
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
@@ -221,25 +184,27 @@ fun RegisterScreen(
                     }
 
                     val isValid = name.isNotBlank() && email.isNotBlank() && phone.isNotBlank() &&
-                            password.isNotBlank() && password == confirmPassword &&
-                            (selectedRole == UserRole.PATIENT || specialty.isNotBlank())
+                            password.isNotBlank() && password == confirmPassword
 
                     Button(
                         onClick = {
                             errorMessage = ""
-                            authViewModel.register(email, password, name, phone, selectedRole, specialty)
+                            authViewModel.register(email, password, name, phone, UserRole.PATIENT, "", emptyList())
                         },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
                         shape = RoundedCornerShape(12.dp),
                         enabled = isValid && authState !is AuthState.Loading,
-                        colors = ButtonDefaults.buttonColors(containerColor = MedBlue)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
                         if (authState is AuthState.Loading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(22.dp),
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onPrimary,
                                 strokeWidth = 2.5.dp
                             )
                         } else {

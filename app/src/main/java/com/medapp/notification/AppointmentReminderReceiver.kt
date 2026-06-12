@@ -46,5 +46,22 @@ class AppointmentReminderReceiver : BroadcastReceiver() {
                 }
             }
         }
+
+        // 3. Guardar en el panel de notificaciones (si tenemos patientId)
+        val patientId = intent.getStringExtra("patientId") ?: ""
+        val appointmentId = intent.getStringExtra("appointmentId") ?: ""
+        
+        if (patientId.isNotBlank()) {
+            CoroutineScope(Dispatchers.IO).launch {
+                val notificationRepo = com.medapp.repository.NotificationRepository()
+                val appNotification = com.medapp.model.AppNotification(
+                    userId = patientId,
+                    title = title,
+                    message = body,
+                    relatedId = appointmentId
+                )
+                notificationRepo.saveNotification(appNotification)
+            }
+        }
     }
 }

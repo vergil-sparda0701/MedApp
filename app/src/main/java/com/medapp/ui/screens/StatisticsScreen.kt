@@ -70,12 +70,12 @@ fun StatisticsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "Total de Citas",
-                                color = Color.White.copy(alpha = 0.8f),
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                                 fontSize = 14.sp
                             )
                             Text(
                                 "${s.total}",
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onPrimary,
                                 fontSize = 48.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -83,7 +83,7 @@ fun StatisticsScreen(
                         Icon(
                             Icons.Default.Assignment,
                             null,
-                            tint = Color.White.copy(alpha = 0.5f),
+                            tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
                             modifier = Modifier.size(64.dp)
                         )
                     }
@@ -135,7 +135,7 @@ fun StatisticsScreen(
 
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -162,7 +162,7 @@ fun StatisticsScreen(
                     Text("Distribución Visual", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MedBlueDark)
                     Card(
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {

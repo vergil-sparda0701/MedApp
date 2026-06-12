@@ -56,7 +56,18 @@ fun BookAppointmentScreen(
     var selectedMinute by remember { mutableIntStateOf(0) }
 
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = System.currentTimeMillis() + 86400000L
+        initialSelectedDateMillis = System.currentTimeMillis() + 86400000L,
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                val today = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                return utcTimeMillis >= today
+            }
+        }
     )
     val timePickerState = rememberTimePickerState(initialHour = 9, initialMinute = 0)
 
@@ -133,7 +144,7 @@ fun BookAppointmentScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Step 1: Doctor
+            // paso 1: Doctor
             SectionCard(title = "1. Seleccionar Doctor") {
                 if (selectedDoctor != null) {
                     Row(
@@ -174,7 +185,7 @@ fun BookAppointmentScreen(
                 }
             }
 
-            // Step 2: Date & Time
+            // paso 2: fecha y hora
             SectionCard(title = "2. Seleccionar Fecha y Hora") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
@@ -203,7 +214,7 @@ fun BookAppointmentScreen(
                 }
             }
 
-            // Step 3: Reason
+            // paso 3: motivo
             SectionCard(title = "3. Motivo de Consulta") {
                 OutlinedTextField(
                     value = reason,
@@ -261,7 +272,7 @@ fun BookAppointmentScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = MedBlue)
             ) {
                 if (operationResult is AppointmentResult.Loading) {
-                    CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White, strokeWidth = 2.5.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.5.dp)
                 } else {
                     Icon(Icons.Default.CalendarMonth, null)
                     Spacer(Modifier.width(8.dp))
@@ -276,7 +287,7 @@ fun BookAppointmentScreen(
 private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {

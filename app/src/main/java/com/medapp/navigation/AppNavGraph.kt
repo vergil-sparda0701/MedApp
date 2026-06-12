@@ -23,20 +23,29 @@ object Routes {
     const val PENDING_APPOINTMENTS = "citas_pendientes"
     const val STATISTICS = "estadisticas"
     const val HISTORY = "historial"
+    const val NOTIFICATIONS = "notificaciones"
+    const val ADMIN_HOME = "home_admin"
+    const val RECEPTIONIST_HOME = "home_recepcionista"
 }
 
 @Composable
 fun AppNavGraph(
     navController: NavHostController = rememberNavController(),
     authViewModel: AuthViewModel = viewModel(),
-    appointmentViewModel: AppointmentViewModel = viewModel()
+    appointmentViewModel: AppointmentViewModel = viewModel(),
+    notificationViewModel: com.medapp.viewmodel.NotificationViewModel = viewModel()
 ) {
     val authState by authViewModel.authState.collectAsState()
 
     val startDestination = when (authState) {
         is AuthState.Authenticated -> {
             val user = (authState as AuthState.Authenticated).user
-            if (user.role == UserRole.DOCTOR) Routes.DOCTOR_HOME else Routes.PATIENT_HOME
+            when (user.role) {
+                UserRole.ADMIN -> Routes.ADMIN_HOME
+                UserRole.RECEPTIONIST -> Routes.RECEPTIONIST_HOME
+                UserRole.DOCTOR -> Routes.DOCTOR_HOME
+                UserRole.PATIENT -> Routes.PATIENT_HOME
+            }
         }
         else -> Routes.LOGIN
     }
@@ -49,7 +58,12 @@ fun AppNavGraph(
             LoginScreen(
                 authViewModel = authViewModel,
                 onLoginSuccess = { user ->
-                    val dest = if (user.role == UserRole.DOCTOR) Routes.DOCTOR_HOME else Routes.PATIENT_HOME
+                    val dest = when (user.role) {
+                        UserRole.ADMIN -> Routes.ADMIN_HOME
+                        UserRole.RECEPTIONIST -> Routes.RECEPTIONIST_HOME
+                        UserRole.DOCTOR -> Routes.DOCTOR_HOME
+                        UserRole.PATIENT -> Routes.PATIENT_HOME
+                    }
                     navController.navigate(dest) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
@@ -62,7 +76,12 @@ fun AppNavGraph(
             RegisterScreen(
                 authViewModel = authViewModel,
                 onRegisterSuccess = { user ->
-                    val dest = if (user.role == UserRole.DOCTOR) Routes.DOCTOR_HOME else Routes.PATIENT_HOME
+                    val dest = when (user.role) {
+                        UserRole.ADMIN -> Routes.ADMIN_HOME
+                        UserRole.RECEPTIONIST -> Routes.RECEPTIONIST_HOME
+                        UserRole.DOCTOR -> Routes.DOCTOR_HOME
+                        UserRole.PATIENT -> Routes.PATIENT_HOME
+                    }
                     navController.navigate(dest) {
                         popUpTo(Routes.REGISTER) { inclusive = true }
                         popUpTo(Routes.LOGIN) { inclusive = true }
@@ -76,9 +95,11 @@ fun AppNavGraph(
             PatientHomeScreen(
                 authViewModel = authViewModel,
                 appointmentViewModel = appointmentViewModel,
+                notificationViewModel = notificationViewModel,
                 onBookAppointment = { navController.navigate(Routes.BOOK_APPOINTMENT) },
                 onViewPending = { navController.navigate(Routes.PENDING_APPOINTMENTS) },
                 onViewStats = { navController.navigate(Routes.STATISTICS) },
+                onNavigateToNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Routes.LOGIN) {
@@ -92,9 +113,41 @@ fun AppNavGraph(
             DoctorHomeScreen(
                 authViewModel = authViewModel,
                 appointmentViewModel = appointmentViewModel,
+                notificationViewModel = notificationViewModel,
                 onViewPending = { navController.navigate(Routes.PENDING_APPOINTMENTS) },
                 onViewStats = { navController.navigate(Routes.STATISTICS) },
                 onViewHistory = { navController.navigate(Routes.HISTORY) },
+                onNavigateToNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Routes.ADMIN_HOME) {
+            AdminHomeScreen(
+                authViewModel = authViewModel,
+                adminViewModel = viewModel(),
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Routes.RECEPTIONIST_HOME) {
+            ReceptionistHomeScreen(
+                authViewModel = authViewModel,
+                appointmentViewModel = appointmentViewModel,
+                notificationViewModel = notificationViewModel,
+                onViewPending = { navController.navigate(Routes.PENDING_APPOINTMENTS) },
+                onBookAppointment = { navController.navigate(Routes.BOOK_APPOINTMENT) },
+                onNavigateToNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Routes.LOGIN) {
@@ -132,6 +185,14 @@ fun AppNavGraph(
             HistoryScreen(
                 authViewModel = authViewModel,
                 appointmentViewModel = appointmentViewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.NOTIFICATIONS) {
+            NotificationsScreen(
+                authViewModel = authViewModel,
+                notificationViewModel = notificationViewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

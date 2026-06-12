@@ -17,7 +17,7 @@ class AppointmentRepository {
     private val db = FirebaseFirestore.getInstance()
     private val collection = db.collection("appointments")
 
-    // ─── Create Appointment ───────────────────────────────────────────────────
+    // ─── agendar/crear cita ───────────────────────────────────────────────────
     suspend fun createAppointment(appointment: Appointment): Result<Appointment> = runCatching {
         val docRef = collection.document()
         val withId = appointment.copy(
@@ -28,7 +28,38 @@ class AppointmentRepository {
         withId
     }
 
-    // ─── Get Appointments for Patient (realtime) ──────────────────────────────
+    // ─── verificar si hay un conflicto en el agendamiento de citas ────────────────────────────────────────
+    // Verifica si el doctor ya tiene una cita dentro de un intervalo de ±30 min
+    // (duración promedio de una consulta médica)
+    suspend fun hasConflictingAppointment(doctorId: String, dateTime: Timestamp): Result<Boolean> = runCatching {
+        try {
+            val appointmentDurationMs = 30 * 60 * 1000L // 30 minutos en milisegundos
+            val requestedMs = dateTime.toDate().time
+
+            // Ventana de conflicto: desde 30 min antes hasta 30 min después
+            val windowStart = Timestamp(java.util.Date(requestedMs - appointmentDurationMs))
+            val windowEnd   = Timestamp(java.util.Date(requestedMs + appointmentDurationMs))
+
+            val snapshot = collection
+                .whereEqualTo("doctorId", doctorId)
+                .whereGreaterThanOrEqualTo("dateTime", windowStart)
+                .whereLessThanOrEqualTo("dateTime", windowEnd)
+                .get()
+                .await()
+
+            // Filtrar localmente por estado activo (Pendiente o Confirmada)
+            val hasConflict = snapshot.documents.any { doc ->
+                val status = doc.getString("status")
+                status == AppointmentStatus.PENDING.name || status == AppointmentStatus.CONFIRMED.name
+            }
+            hasConflict
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw e
+        }
+    }
+
+    // ─── obtener las citas para el paciente (realtime) ──────────────────────────────
     fun getPatientAppointmentsFlow(patientId: String): Flow<List<Appointment>> = callbackFlow {
         val listener = collection
             .whereEqualTo("patientId", patientId)
@@ -43,7 +74,7 @@ class AppointmentRepository {
         awaitClose { listener.remove() }
     }
 
-    // ─── Get Appointments for Doctor (realtime) ───────────────────────────────
+    // ─── obtener las citas para el doctor (realtime) ───────────────────────────────
     fun getDoctorAppointmentsFlow(doctorId: String): Flow<List<Appointment>> = callbackFlow {
         val listener = collection
             .whereEqualTo("doctorId", doctorId)
@@ -58,7 +89,7 @@ class AppointmentRepository {
         awaitClose { listener.remove() }
     }
 
-    // ─── Get Pending Appointments ─────────────────────────────────────────────
+    // ─── obtener todas las citas pendientes ─────────────────────────────────────────────
     fun getPendingAppointmentsFlow(userId: String, isDoctor: Boolean): Flow<List<Appointment>> = callbackFlow {
         val field = if (isDoctor) "doctorId" else "patientId"
         val now = Timestamp.now()
@@ -77,7 +108,63 @@ class AppointmentRepository {
         awaitClose { listener.remove() }
     }
 
-    // ─── Update Appointment Status ────────────────────────────────────────────
+    // ─── obtener todas las citas (Admin) ─────────────────────────────────────────
+    fun getAllAppointmentsFlow(): Flow<List<Appointment>> = callbackFlow {
+        val listener = collection
+            .orderBy("dateTime", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                val list = snapshot?.documents?.mapNotNull { doc ->
+                    doc.data?.let { Appointment.fromMap(it, doc.id) }
+                } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    // ─── obtener las citas para recepcionista (realtime) ───────────────────────────────
+    fun getReceptionistAppointmentsFlow(doctorIds: List<String>): Flow<List<Appointment>> = callbackFlow {
+        if (doctorIds.isEmpty()) {
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
+        val listener = collection
+            .whereIn("doctorId", doctorIds)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                val list = snapshot?.documents?.mapNotNull { doc ->
+                    doc.data?.let { Appointment.fromMap(it, doc.id) }
+                }?.sortedByDescending { it.dateTime.toDate().time } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    // ─── obtener todas las citas pendientes para recepcionista ─────────────────────────────────────────────
+    fun getReceptionistPendingAppointmentsFlow(doctorIds: List<String>): Flow<List<Appointment>> = callbackFlow {
+        if (doctorIds.isEmpty()) {
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
+        val listener = collection
+            .whereIn("doctorId", doctorIds)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                val nowMs = Timestamp.now().toDate().time
+                val list = snapshot?.documents?.mapNotNull { doc ->
+                    doc.data?.let { Appointment.fromMap(it, doc.id) }
+                }?.filter {
+                    (it.status == AppointmentStatus.PENDING || it.status == AppointmentStatus.CONFIRMED) &&
+                    it.dateTime.toDate().time >= nowMs
+                }?.sortedBy { it.dateTime.toDate().time } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    // ─── actualizar el estado de la cita ────────────────────────────────────────────
     suspend fun updateStatus(appointmentId: String, status: AppointmentStatus, updatedBy: String): Result<Unit> = runCatching {
         collection.document(appointmentId).update(
             mapOf(
@@ -88,7 +175,7 @@ class AppointmentRepository {
         ).await()
     }
 
-    // ─── Update Appointment Notes (doctor) ────────────────────────────────────
+    // ─── actualizar las notas de la cita (doctor) ────────────────────────────────────
     suspend fun updateNotes(appointmentId: String, notes: String): Result<Unit> = runCatching {
         collection.document(appointmentId).update(
             mapOf(
@@ -119,7 +206,7 @@ class AppointmentRepository {
         }
     }
 
-    // ─── Get Statistics ───────────────────────────────────────────────────────
+    // ─── obtener stats ───────────────────────────────────────────────────────
     suspend fun getStats(userId: String, isDoctor: Boolean): Result<AppointmentStats> = runCatching {
         val field = if (isDoctor) "doctorId" else "patientId"
         val snapshot = collection.whereEqualTo(field, userId).get().await()
@@ -145,10 +232,37 @@ class AppointmentRepository {
         )
     }
 
-    // ─── Get upcoming appointments for reminder processing ───────────────────
+    // ─── obtener stats para recepcionista ───────────────────────────────────────────────────────
+    suspend fun getReceptionistStats(doctorIds: List<String>): Result<AppointmentStats> = runCatching {
+        if (doctorIds.isEmpty()) return@runCatching AppointmentStats()
+        
+        val snapshot = collection.whereIn("doctorId", doctorIds).get().await()
+
+        val appointments = snapshot.documents.mapNotNull { doc ->
+            doc.data?.let { Appointment.fromMap(it, doc.id) }
+        }
+
+        val total = appointments.size
+        val pending = appointments.count { it.status == AppointmentStatus.PENDING }
+        val confirmed = appointments.count { it.status == AppointmentStatus.CONFIRMED }
+        val completed = appointments.count { it.status == AppointmentStatus.COMPLETED }
+        val cancelled = appointments.count { it.status == AppointmentStatus.CANCELLED }
+
+        AppointmentStats(
+            total = total,
+            pending = pending,
+            confirmed = confirmed,
+            completed = completed,
+            cancelled = cancelled,
+            completionRate = if (total > 0) completed.toFloat() / total * 100 else 0f,
+            cancellationRate = if (total > 0) cancelled.toFloat() / total * 100 else 0f
+        )
+    }
+
+    // ─── obtener las próximas citas para recibir recordatorios. ───────────────────
     suspend fun getAppointmentsNeedingReminder(): Result<List<Appointment>> = runCatching {
         val now = Timestamp.now()
-        // Simple query by date to avoid complex index requirements during development
+        // Consulta sencilla por fecha para evitar requisitos de índice complejos durante el desarrollo.
         val snapshot = collection
             .whereGreaterThanOrEqualTo("dateTime", now)
             .get().await()
@@ -158,14 +272,14 @@ class AppointmentRepository {
         }
     }
 
-    // ─── Mark a specific reminder as sent ────────────────────────────────────
+    // ─── Marcar recordatorios especificos como enviados ────────────────────────────────────
     suspend fun markReminderAsSent(appointmentId: String, field: String) {
         runCatching {
             collection.document(appointmentId).update(field, true).await()
         }
     }
 
-    // ─── Get patient appointments with recent status changes ──────────────────
+    // ─── Obtener las citas de los pacientes con los estados cambiados ──────────────────
     // Usado por StatusChangeWorker y AppointmentViewModel para notificar al paciente
     // cuando el doctor confirma, cancela o completa una cita.
     suspend fun getPatientRecentStatusChanges(
@@ -186,7 +300,7 @@ class AppointmentRepository {
             }
     }
 
-    // ─── Get patient email for email reminders ────────────────────────────────
+    // ─── Obtener el correo/email de los pacientes para enviar recordatorios por correo electronico ────────────────────────────────
     suspend fun getPatientEmail(patientId: String): String? = runCatching {
         val doc = db.collection("users").document(patientId).get().await()
         doc.getString("email")?.takeIf { it.isNotBlank() }

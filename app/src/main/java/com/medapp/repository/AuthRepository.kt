@@ -31,7 +31,8 @@ class AuthRepository {
         name: String,
         phone: String,
         role: UserRole,
-        specialty: String = ""
+        specialty: String = "",
+        assignedDoctorIds: List<String> = emptyList()
     ): Result<User> = runCatching {
         val result = auth.createUserWithEmailAndPassword(email, password).await()
         val uid = result.user!!.uid
@@ -42,7 +43,8 @@ class AuthRepository {
             email = email,
             phone = phone,
             role = role,
-            specialty = specialty
+            specialty = specialty,
+            assignedDoctorIds = assignedDoctorIds
         )
 
         db.collection("users").document(uid).set(user.toMap()).await()
