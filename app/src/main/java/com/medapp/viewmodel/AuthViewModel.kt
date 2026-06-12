@@ -25,6 +25,14 @@ sealed class DoctorsState {
     data class Error(val message: String) : DoctorsState()
 }
 
+sealed class PatientsState {
+    object Idle : PatientsState()
+    object Loading : PatientsState()
+    data class Success(val patients: List<User>) : PatientsState()
+    data class Empty(val message: String = "No hay pacientes registrados") : PatientsState()
+    data class Error(val message: String) : PatientsState()
+}
+
 class AuthViewModel(
     private val repository: AuthRepository = AuthRepository()
 ) : ViewModel() {
@@ -40,6 +48,12 @@ class AuthViewModel(
 
     private val _doctorsState = MutableStateFlow<DoctorsState>(DoctorsState.Idle)
     val doctorsState: StateFlow<DoctorsState> = _doctorsState.asStateFlow()
+
+    private val _patients = MutableStateFlow<List<User>>(emptyList())
+    val patients: StateFlow<List<User>> = _patients.asStateFlow()
+
+    private val _patientsState = MutableStateFlow<PatientsState>(PatientsState.Idle)
+    val patientsState: StateFlow<PatientsState> = _patientsState.asStateFlow()
 
     init {
         checkAuthState()
@@ -64,6 +78,9 @@ class AuthViewModel(
                 _currentUserProfile.value = user
                 _authState.value = AuthState.Authenticated(user)
                 loadDoctors()
+                if (user.role == UserRole.RECEPTIONIST) {
+                    loadPatients()
+                }
             },
             onFailure = {
                 _authState.value = AuthState.Error("Error cargando perfil: ${it.message}")
@@ -80,6 +97,9 @@ class AuthViewModel(
                     _currentUserProfile.value = user
                     _authState.value = AuthState.Authenticated(user)
                     loadDoctors()
+                    if (user.role == UserRole.RECEPTIONIST) {
+                        loadPatients()
+                    }
                 },
                 onFailure = {
                     _authState.value = AuthState.Error(it.message ?: "Error al registrar")
@@ -106,6 +126,8 @@ class AuthViewModel(
         _currentUserProfile.value = null
         _doctors.value = emptyList()
         _doctorsState.value = DoctorsState.Idle
+        _patients.value = emptyList()
+        _patientsState.value = PatientsState.Idle
     }
 
     fun loadDoctors() {
@@ -122,6 +144,25 @@ class AuthViewModel(
                 onFailure = { error ->
                     _doctors.value = emptyList()
                     _doctorsState.value = DoctorsState.Error("Error: ${error.message}")
+                }
+            )
+        }
+    }
+
+    fun loadPatients() {
+        viewModelScope.launch {
+            _patientsState.value = PatientsState.Loading
+            repository.getPatients().fold(
+                onSuccess = { list ->
+                    _patients.value = list
+                    _patientsState.value = if (list.isEmpty())
+                        PatientsState.Empty("No hay pacientes registrados aun")
+                    else
+                        PatientsState.Success(list)
+                },
+                onFailure = { error ->
+                    _patients.value = emptyList()
+                    _patientsState.value = PatientsState.Error("Error: ${error.message}")
                 }
             )
         }

@@ -83,4 +83,14 @@ class AuthRepository {
             doc.data?.let { User.fromMap(it) }
         }
     }
+
+    // ─── Get All Patients ─────────────────────────────────────────────────────
+    suspend fun getPatients(): Result<List<User>> = runCatching {
+        val snapshot = db.collection("users")
+            .whereEqualTo("role", UserRole.PATIENT.name)
+            .get().await()
+        snapshot.documents.mapNotNull { doc ->
+            doc.data?.let { User.fromMap(it) }
+        }
+    }
 }

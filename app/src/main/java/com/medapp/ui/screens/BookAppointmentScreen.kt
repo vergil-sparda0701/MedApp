@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.Timestamp
 import com.medapp.model.User
+import com.medapp.model.UserRole
 import com.medapp.ui.theme.MedBlue
 import com.medapp.ui.theme.MedBlueDark
 import com.medapp.ui.theme.MedSurface
@@ -32,6 +33,7 @@ import com.medapp.viewmodel.AppointmentViewModel
 import com.medapp.viewmodel.AuthState
 import com.medapp.viewmodel.AuthViewModel
 import com.medapp.viewmodel.DoctorsState
+import com.medapp.viewmodel.PatientsState
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,12 +44,15 @@ fun BookAppointmentScreen(
     onNavigateBack: () -> Unit
 ) {
     val authState by authViewModel.authState.collectAsState()
-    val patient = (authState as? AuthState.Authenticated)?.user ?: return
+    val currentUser = (authState as? AuthState.Authenticated)?.user ?: return
     val doctorsState by authViewModel.doctorsState.collectAsState()
+    val patientsState by authViewModel.patientsState.collectAsState()
     val operationResult by appointmentViewModel.operationResult.collectAsState()
 
+    var selectedPatient by remember { mutableStateOf<User?>(if (currentUser.role == UserRole.PATIENT) currentUser else null) }
     var selectedDoctor by remember { mutableStateOf<User?>(null) }
     var reason by remember { mutableStateOf("") }
+    var showPatientPicker by remember { mutableStateOf(false) }
     var showDoctorPicker by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
@@ -56,6 +61,17 @@ fun BookAppointmentScreen(
     var selectedMinute by remember { mutableIntStateOf(0) }
 
     var timeError by remember { mutableStateOf<String?>(null) }
+
+    val filteredDoctorsState = remember(doctorsState, currentUser) {
+        val currentDoctorsState = doctorsState
+        if (currentUser.role == UserRole.RECEPTIONIST && currentDoctorsState is DoctorsState.Success) {
+            val assigned = currentDoctorsState.doctors.filter { it.uid in currentUser.assignedDoctorIds }
+            if (assigned.isEmpty()) DoctorsState.Empty("No tienes doctores asignados.")
+            else DoctorsState.Success(assigned)
+        } else {
+            currentDoctorsState
+        }
+    }
 
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = System.currentTimeMillis() + 86400000L,
@@ -97,9 +113,21 @@ fun BookAppointmentScreen(
         }
     }
 
+    if (showPatientPicker) {
+        PatientPickerDialog(
+            patientsState = patientsState,
+            onDismiss = { showPatientPicker = false },
+            onSelect = { pat ->
+                selectedPatient = pat
+                showPatientPicker = false
+            },
+            onRetry = { authViewModel.loadPatients() }
+        )
+    }
+
     if (showDoctorPicker) {
         DoctorPickerDialog(
-            doctorsState = doctorsState,
+            doctorsState = filteredDoctorsState,
             onDismiss = { showDoctorPicker = false },
             onSelect = { doctor ->
                 selectedDoctor = doctor
@@ -183,6 +211,49 @@ fun BookAppointmentScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // paso 0: Paciente (Solo recepcionistas)
+            if (currentUser.role == UserRole.RECEPTIONIST) {
+                SectionCard(title = "0. Seleccionar Paciente") {
+                    if (selectedPatient != null) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showPatientPicker = true }
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(MedBlue.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Person, null, tint = MedBlue)
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(selectedPatient!!.name, fontWeight = FontWeight.Bold)
+                                Text(selectedPatient!!.email, color = Color.Gray, fontSize = 13.sp)
+                            }
+                            TextButton(onClick = { showPatientPicker = true }) {
+                                Text("Cambiar")
+                            }
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = { showPatientPicker = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.PersonSearch, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Seleccionar paciente")
+                        }
+                    }
+                }
+            }
+
             // paso 1: Doctor
             SectionCard(title = "1. Seleccionar Doctor") {
                 if (selectedDoctor != null) {
@@ -285,7 +356,7 @@ fun BookAppointmentScreen(
                 }
             }
 
-            val canBook = selectedDoctor != null && selectedDate != null && reason.isNotBlank()
+            val canBook = selectedPatient != null && selectedDoctor != null && selectedDate != null && reason.isNotBlank()
 
             Button(
                 onClick = {
@@ -303,7 +374,7 @@ fun BookAppointmentScreen(
                         set(Calendar.MILLISECOND, 0)
                     }
                     appointmentViewModel.bookAppointment(
-                        patient = patient,
+                        patient = selectedPatient!!,
                         doctor = selectedDoctor!!,
                         dateTime = Timestamp(cal.time),
                         reason = reason
@@ -327,6 +398,85 @@ fun BookAppointmentScreen(
 }
 
 @Composable
+private fun PatientPickerDialog(
+    patientsState: PatientsState,
+    onDismiss: () -> Unit,
+    onSelect: (com.medapp.model.User) -> Unit,
+    onRetry: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Seleccionar Paciente", fontWeight = FontWeight.Bold) },
+        text = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 100.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                when (patientsState) {
+                    is PatientsState.Loading, is PatientsState.Idle -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = MedBlue)
+                            Spacer(Modifier.height(12.dp))
+                            Text("Buscando pacientes...", color = Color.Gray, fontSize = 14.sp)
+                        }
+                    }
+                    is PatientsState.Empty -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Icon(Icons.Default.PersonOff, null, tint = Color.Gray, modifier = Modifier.size(48.dp))
+                            Spacer(Modifier.height(12.dp))
+                            Text("No hay pacientes disponibles", fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
+                        }
+                    }
+                    is PatientsState.Error -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Icon(Icons.Default.WifiOff, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                            Spacer(Modifier.height(12.dp))
+                            Text("Error al cargar pacientes", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
+                            Spacer(Modifier.height(4.dp))
+                            Text(patientsState.message, color = Color.Gray, fontSize = 11.sp, textAlign = TextAlign.Center)
+                            Spacer(Modifier.height(12.dp))
+                            Button(onClick = onRetry) { Text("Reintentar") }
+                        }
+                    }
+                    is PatientsState.Success -> {
+                        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                            items(patientsState.patients) { pat ->
+                                ListItem(
+                                    headlineContent = { Text(pat.name, fontWeight = FontWeight.Medium) },
+                                    supportingContent = { Text(pat.email, color = Color.Gray, fontSize = 13.sp) },
+                                    leadingContent = {
+                                        Box(
+                                            modifier = Modifier.size(44.dp).clip(CircleShape).background(MedBlue.copy(alpha = 0.12f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(Icons.Default.Person, null, tint = MedBlue, modifier = Modifier.size(22.dp))
+                                        }
+                                    },
+                                    modifier = Modifier.clickable { onSelect(pat) }.clip(RoundedCornerShape(8.dp))
+                                )
+                                HorizontalDivider()
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar") }
+        }
+    )
+}
+
+@Composable
 private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -346,7 +496,7 @@ private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Un
 private fun DoctorPickerDialog(
     doctorsState: DoctorsState,
     onDismiss: () -> Unit,
-    onSelect: (User) -> Unit,
+    onSelect: (com.medapp.model.User) -> Unit,
     onRetry: () -> Unit
 ) {
     AlertDialog(
