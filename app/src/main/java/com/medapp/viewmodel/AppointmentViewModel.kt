@@ -161,6 +161,15 @@ class AppointmentViewModel(
                 return@launch
             }
             
+            // Verificar si el paciente ya tiene una cita idéntica
+            val duplicateResult = repository.hasDuplicateAppointmentForPatient(patient.uid, doctor.uid, dateTime)
+            if (duplicateResult.isSuccess && duplicateResult.getOrDefault(false)) {
+                _operationResult.value = AppointmentResult.Error(
+                    "Ya tienes una cita agendada con este doctor a esta misma hora y día."
+                )
+                return@launch
+            }
+
             // Verificar disponibilidad de horario (evitar citas duplicadas con el mismo doctor)
             val conflictResult = repository.hasConflictingAppointment(doctor.uid, dateTime)
             if (conflictResult.isSuccess && conflictResult.getOrDefault(false)) {

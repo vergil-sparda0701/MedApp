@@ -186,7 +186,7 @@ data class AppNotification(
     val message: String = "",
     val timestamp: Timestamp = Timestamp.now(),
     val isRead: Boolean = false,
-    val relatedId: String = "" // Optional ID (e.g. appointmentId)
+    val relatedId: String = "" // ID opcional (e.g. appointmentId)
 ) {
     fun toMap(): Map<String, Any> = mapOf(
         "id" to id,

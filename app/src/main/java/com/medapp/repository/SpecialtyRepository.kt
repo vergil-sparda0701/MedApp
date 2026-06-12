@@ -36,7 +36,7 @@ class SpecialtyRepository {
     }
 
     suspend fun addSpecialty(name: String): Result<Specialty> = runCatching {
-        // Check if exists
+        // revisar si existe
         val existing = specialtiesCollection
             .whereEqualTo("name", name)
             .get()
@@ -54,10 +54,10 @@ class SpecialtyRepository {
     }
 
     suspend fun updateSpecialty(id: String, name: String, oldName: String): Result<Unit> = runCatching {
-        // Update the specialty document
+        // Actualizar la tabla especialidad
         specialtiesCollection.document(id).update("name", name).await()
         
-        // Update all doctors that had the old specialty name
+        // Actualizar todos los doctores que tienen el nombre viejo de la especialidad
         if (oldName.isNotEmpty() && oldName != name) {
             val doctorsToUpdate = usersCollection
                 .whereEqualTo("role", UserRole.DOCTOR.name)
@@ -84,7 +84,7 @@ class SpecialtyRepository {
     }
 
     suspend fun deleteSpecialty(id: String, name: String): Result<Unit> = runCatching {
-        // Check if there are doctors with this specialty first
+        // revisar si hay algun doctor con esta especialidad primero
         val doctorCount = getDoctorCountBySpecialty(name).getOrElse { 0 }
         
         if (doctorCount > 0) {

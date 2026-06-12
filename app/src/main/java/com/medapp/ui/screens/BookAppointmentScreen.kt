@@ -539,7 +539,7 @@ private fun DoctorPickerDialog(
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "Registra al menos un doctor con rol 'Doctor' para poder agendar citas.",
+                                "No hay doctores registrados, espere a que la administración registre un doctor para poder agendar citas.",
                                 color = Color.Gray,
                                 fontSize = 12.sp,
                                 textAlign = TextAlign.Center

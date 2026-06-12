@@ -59,6 +59,22 @@ class AppointmentRepository {
         }
     }
 
+    // ─── verificar si el paciente ya tiene una cita exacta ────────────────────────────────────────
+    // Verifica si un paciente ya tiene una cita con el mismo doctor, el mismo dia y a la misma hora
+    suspend fun hasDuplicateAppointmentForPatient(patientId: String, doctorId: String, dateTime: Timestamp): Result<Boolean> = runCatching {
+        val snapshot = collection
+            .whereEqualTo("patientId", patientId)
+            .whereEqualTo("doctorId", doctorId)
+            .whereEqualTo("dateTime", dateTime)
+            .get()
+            .await()
+
+        snapshot.documents.any { doc ->
+            val status = doc.getString("status")
+            status == AppointmentStatus.PENDING.name || status == AppointmentStatus.CONFIRMED.name
+        }
+    }
+
     // ─── obtener las citas para el paciente (realtime) ──────────────────────────────
     fun getPatientAppointmentsFlow(patientId: String): Flow<List<Appointment>> = callbackFlow {
         val listener = collection
