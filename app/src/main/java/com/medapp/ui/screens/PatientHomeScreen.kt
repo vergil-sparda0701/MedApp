@@ -91,6 +91,7 @@ fun PatientHomeScreen(
                 )
             )
         },
+        //botón flotante para agendar cita
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onBookAppointment,

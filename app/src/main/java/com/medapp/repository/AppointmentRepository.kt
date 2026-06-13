@@ -29,34 +29,27 @@ class AppointmentRepository {
     }
 
     // ─── verificar si hay un conflicto en el agendamiento de citas ────────────────────────────────────────
-    // Verifica si el doctor ya tiene una cita dentro de un intervalo de ±30 min
+    // Verifica si el doctor ya tiene una cita dentro de un intervalo de < 30 min
     // (duración promedio de una consulta médica)
     suspend fun hasConflictingAppointment(doctorId: String, dateTime: Timestamp): Result<Boolean> = runCatching {
-        try {
-            val appointmentDurationMs = 30 * 60 * 1000L // 30 minutos en milisegundos
-            val requestedMs = dateTime.toDate().time
+        val appointmentDurationMs = 30 * 60 * 1000L // 30 minutos en milisegundos
+        val requestedMs = dateTime.toDate().time
 
-            // Ventana de conflicto: desde 30 min antes hasta 30 min después
-            val windowStart = Timestamp(java.util.Date(requestedMs - appointmentDurationMs))
-            val windowEnd   = Timestamp(java.util.Date(requestedMs + appointmentDurationMs))
+        // Al usar solo whereEqualTo evitamos la necesidad de un índice compuesto manual en Firestore
+        val snapshot = collection
+            .whereEqualTo("doctorId", doctorId)
+            .get()
+            .await()
 
-            val snapshot = collection
-                .whereEqualTo("doctorId", doctorId)
-                .whereGreaterThanOrEqualTo("dateTime", windowStart)
-                .whereLessThanOrEqualTo("dateTime", windowEnd)
-                .get()
-                .await()
-
-            // Filtrar localmente por estado activo (Pendiente o Confirmada)
-            val hasConflict = snapshot.documents.any { doc ->
-                val status = doc.getString("status")
-                status == AppointmentStatus.PENDING.name || status == AppointmentStatus.CONFIRMED.name
-            }
-            hasConflict
-        } catch (e: Exception) {
-            e.printStackTrace()
-            throw e
+        val hasConflict = snapshot.documents.any { doc ->
+            val status = doc.getString("status")
+            val docDateTime = doc.getTimestamp("dateTime")?.toDate()?.time ?: 0L
+            val isActive = status == AppointmentStatus.PENDING.name || status == AppointmentStatus.CONFIRMED.name
+            
+            val timeDifference = Math.abs(docDateTime - requestedMs)
+            isActive && timeDifference < appointmentDurationMs
         }
+        hasConflict
     }
 
     // ─── verificar si el paciente ya tiene una cita exacta ────────────────────────────────────────
