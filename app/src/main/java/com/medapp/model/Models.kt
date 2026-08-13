@@ -1,9 +1,21 @@
 package com.medapp.model
 
 import com.google.firebase.Timestamp
+import com.medapp.model.AppointmentStatus.CANCELLED
+import com.medapp.model.AppointmentStatus.COMPLETED
+import com.medapp.model.AppointmentStatus.CONFIRMED
+import com.medapp.model.AppointmentStatus.PENDING
 
 // crear roles de usuarios
-enum class UserRole { PATIENT, DOCTOR, ADMIN, RECEPTIONIST }
+enum class UserRole { PATIENT, DOCTOR, ADMIN, RECEPTIONIST;
+
+    fun displayNameRole(): String = when (this) {
+        PATIENT -> "Paciente"
+        DOCTOR -> "Doctor/a"
+        ADMIN -> "Adminstrador/a"
+        RECEPTIONIST -> "Recepcionista"
+    }
+}
 
 // crea el modelo de usuario
 data class User(
@@ -12,7 +24,8 @@ data class User(
     val email: String = "",
     val phone: String = "",
     val role: UserRole = UserRole.PATIENT,
-    val specialty: String = "",       // para doctores
+    val specialty: String = "",       // para doctores (nombre de la especialidad)
+    val specialtyId: String = "",     // para doctores (ID de la especialidad)
     val schedule: DoctorSchedule? = null, // horario de trabajo para doctores
     val assignedDoctorIds: List<String> = emptyList(),// para recepcionistas
     val fcmToken: String = "",
@@ -26,6 +39,7 @@ data class User(
         "phone" to phone,
         "role" to role.name,
         "specialty" to specialty,
+        "specialtyId" to specialtyId,
         "schedule" to schedule?.toMap(),
         "assignedDoctorIds" to assignedDoctorIds,
         "fcmToken" to fcmToken,
@@ -41,6 +55,7 @@ data class User(
             phone = map["phone"] as? String ?: "",
             role = UserRole.valueOf(map["role"] as? String ?: "PATIENT"),
             specialty = map["specialty"] as? String ?: "",
+            specialtyId = map["specialtyId"] as? String ?: "",
             schedule = (map["schedule"] as? Map<String, Any?>)?.let { DoctorSchedule.fromMap(it) },
             assignedDoctorIds = (map["assignedDoctorIds"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
             fcmToken = map["fcmToken"] as? String ?: "",

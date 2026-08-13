@@ -117,6 +117,7 @@ class AdminViewModel : ViewModel() {
         phone: String,
         role: UserRole,
         specialty: String = "",
+        specialtyId: String = "",
         schedule: com.medapp.model.DoctorSchedule? = null,
         assignedDoctorIds: List<String> = emptyList()
     ) {
@@ -140,6 +141,7 @@ class AdminViewModel : ViewModel() {
                         phone = phone,
                         role = role,
                         specialty = specialty,
+                        specialtyId = specialtyId,
                         schedule = schedule,
                         assignedDoctorIds = assignedDoctorIds
                     )

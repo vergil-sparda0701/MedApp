@@ -34,11 +34,14 @@ fun HistoryScreen(
     val authState by authViewModel.authState.collectAsState()
     val user = (authState as? AuthState.Authenticated)?.user ?: return
 
-    // Guard: solo doctores
-    if (user.role != UserRole.DOCTOR) {
+    // Guard: solo doctores y recepcionistas
+    if (user.role != UserRole.DOCTOR && user.role != UserRole.RECEPTIONIST) {
         LaunchedEffect(Unit) { onNavigateBack() }
         return
     }
+
+    val isReceptionist = user.role == UserRole.RECEPTIONIST
+    val assignedDoctorIds = user.assignedDoctorIds
 
     val historyAppointments by appointmentViewModel.historyAppointments.collectAsState()
     val isLoadingHistory by appointmentViewModel.isLoadingHistory.collectAsState()
@@ -58,10 +61,18 @@ fun HistoryScreen(
     fun reload() {
         val startTs = startDateMillis?.let { Timestamp(Date(it)) }
         val endTs = endDateMillis?.let {
-            val cal = Calendar.getInstance().apply { timeInMillis = it; set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59) }
+            val cal = Calendar.getInstance().apply {
+                timeInMillis = it
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+            }
             Timestamp(cal.time)
         }
-        appointmentViewModel.loadDoctorHistory(user.uid, startTs, endTs, sortNewest)
+        if (isReceptionist) {
+            appointmentViewModel.loadReceptionistHistory(assignedDoctorIds, startTs, endTs, sortNewest)
+        } else {
+            appointmentViewModel.loadDoctorHistory(user.uid, startTs, endTs, sortNewest)
+        }
     }
 
     LaunchedEffect(user.uid) { reload() }
@@ -265,6 +276,15 @@ fun HistoryScreen(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(appointment.patientName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                        // Si es recepcionista, mostrar de qué doctor es la cita
+                                        if (isReceptionist) {
+                                            Text(
+                                                "Dr. ${appointment.doctorName}",
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
                                         Text(
                                             formatTimestamp(appointment.dateTime),
                                             color = MedBlue,

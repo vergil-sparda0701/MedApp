@@ -147,6 +147,7 @@ fun AppNavGraph(
                 notificationViewModel = notificationViewModel,
                 onViewPending = { navController.navigate(Routes.PENDING_APPOINTMENTS) },
                 onBookAppointment = { navController.navigate(Routes.BOOK_APPOINTMENT) },
+                onViewHistory = { navController.navigate(Routes.HISTORY) },
                 onNavigateToNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
                 onLogout = {
                     authViewModel.logout()

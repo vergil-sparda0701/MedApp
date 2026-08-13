@@ -215,6 +215,30 @@ class AppointmentRepository {
         }
     }
 
+    // ─── Get History with Date Filter (Receptionist — múltiples doctores) ────
+    suspend fun getReceptionistHistory(
+        doctorIds: List<String>,
+        startDate: Timestamp? = null,
+        endDate: Timestamp? = null,
+        sortNewest: Boolean = true
+    ): Result<List<Appointment>> = runCatching {
+        if (doctorIds.isEmpty()) return@runCatching emptyList()
+
+        var query: Query = collection.whereIn("doctorId", doctorIds)
+
+        if (startDate != null) query = query.whereGreaterThanOrEqualTo("dateTime", startDate)
+        if (endDate != null) query = query.whereLessThanOrEqualTo("dateTime", endDate)
+
+        val direction = if (sortNewest) Query.Direction.DESCENDING else Query.Direction.ASCENDING
+        query = query.orderBy("dateTime", direction)
+
+        val snapshot = query.get().await()
+        snapshot.documents.mapNotNull { doc ->
+            doc.data?.let { Appointment.fromMap(it, doc.id) }
+        }
+    }
+
+
     // ─── obtener stats ───────────────────────────────────────────────────────
     suspend fun getStats(userId: String, isDoctor: Boolean): Result<AppointmentStats> = runCatching {
         val field = if (isDoctor) "doctorId" else "patientId"

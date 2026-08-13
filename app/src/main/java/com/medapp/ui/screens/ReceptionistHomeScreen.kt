@@ -35,6 +35,7 @@ fun ReceptionistHomeScreen(
     notificationViewModel: NotificationViewModel,
     onViewPending: () -> Unit,
     onBookAppointment: () -> Unit,
+    onViewHistory: () -> Unit,
     onNavigateToNotifications: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -169,6 +170,13 @@ fun ReceptionistHomeScreen(
                         subtitle = "Confirmar o cancelar solicitudes",
                         color = MedBlue,
                         onClick = onViewPending
+                    )
+                    DoctorNavCard(
+                        icon = Icons.Default.History,
+                        title = "Historial de Citas",
+                        subtitle = "Citas completadas y canceladas de tus doctores",
+                        color = MedBlueDark,
+                        onClick = onViewHistory
                     )
                 }
             }

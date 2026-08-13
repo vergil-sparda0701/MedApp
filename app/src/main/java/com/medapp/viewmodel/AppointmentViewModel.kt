@@ -316,6 +316,23 @@ class AppointmentViewModel(
         }
     }
 
+    // ─── cargar historial (Recepcionista — múltiples doctores) ───────────────────
+    fun loadReceptionistHistory(
+        doctorIds: List<String>,
+        startDate: Timestamp? = null,
+        endDate: Timestamp? = null,
+        sortNewest: Boolean = true
+    ) {
+        viewModelScope.launch {
+            _isLoadingHistory.value = true
+            repository.getReceptionistHistory(doctorIds, startDate, endDate, sortNewest).fold(
+                onSuccess = { _historyAppointments.value = it },
+                onFailure = { _historyAppointments.value = emptyList() }
+            )
+            _isLoadingHistory.value = false
+        }
+    }
+
     // ─── cargar estadisticas ───────────────────────────────────────────────────────────
     fun loadStats(userId: String, isDoctor: Boolean) {
         viewModelScope.launch {

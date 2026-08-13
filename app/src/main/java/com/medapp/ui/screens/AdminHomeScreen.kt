@@ -262,6 +262,7 @@ fun EditUserDialog(user: User, adminViewModel: AdminViewModel, onDismiss: () -> 
     var phone by remember { mutableStateOf(user.phone) }
     var email by remember { mutableStateOf(user.email) }
     var specialty by remember { mutableStateOf(user.specialty) }
+    var specialtyId by remember { mutableStateOf(user.specialtyId) }
 
     val userRole = user.role
     val selectedDoctorIds = remember { mutableStateListOf(*user.assignedDoctorIds.toTypedArray()) }
@@ -405,6 +406,7 @@ fun EditUserDialog(user: User, adminViewModel: AdminViewModel, onDismiss: () -> 
                                             text = { Text(spec.name) },
                                             onClick = {
                                                 specialty = spec.name
+                                                specialtyId = spec.id
                                                 specialtyDropdownExpanded = false
                                             }
                                         )
@@ -530,6 +532,7 @@ fun EditUserDialog(user: User, adminViewModel: AdminViewModel, onDismiss: () -> 
                             email = email,
                             assignedDoctorIds = selectedDoctorIds.toList(),
                             specialty = specialty,
+                            specialtyId = if (userRole == UserRole.DOCTOR) specialtyId else user.specialtyId,
                             schedule = if (userRole == UserRole.DOCTOR) DoctorSchedule(workingDays.toList(), shiftType) else user.schedule
                         )
                     )
@@ -566,6 +569,7 @@ fun CreateUserDialog(adminViewModel: AdminViewModel, onDismiss: () -> Unit) {
     var password by remember { mutableStateOf("") }
     var selectedRole by remember { mutableStateOf(UserRole.DOCTOR) }
     var specialty by remember { mutableStateOf("") }
+    var specialtyId by remember { mutableStateOf("") }
     
     val selectedDoctorIds = remember { mutableStateListOf<String>() }
     var doctorsDropdownExpanded by remember { mutableStateOf(false) }
@@ -679,6 +683,7 @@ fun CreateUserDialog(adminViewModel: AdminViewModel, onDismiss: () -> Unit) {
                                                 text = { Text(spec.name) },
                                                 onClick = {
                                                     specialty = spec.name
+                                                    specialtyId = spec.id
                                                     specialtyDropdownExpanded = false
                                                 }
                                             )
@@ -823,6 +828,7 @@ fun CreateUserDialog(adminViewModel: AdminViewModel, onDismiss: () -> Unit) {
                         phone = phone,
                         role = selectedRole,
                         specialty = if (selectedRole == UserRole.DOCTOR) specialty else "",
+                        specialtyId = if (selectedRole == UserRole.DOCTOR) specialtyId else "",
                         schedule = if (selectedRole == UserRole.DOCTOR) DoctorSchedule(workingDays.toList(), shiftType) else null,
                         assignedDoctorIds = if (selectedRole == UserRole.RECEPTIONIST) selectedDoctorIds.toList() else emptyList()
                     )
